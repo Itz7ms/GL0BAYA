@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GLOBAYA - Carte Interactive</title>
+  <link rel="icon" href="Image Globaya/Flavicon 512x512.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: 'Outfit', sans-serif; background: #121212; color: #fff; overflow: hidden; }
+
+    /* ── NAVBAR ── */
+    #navbar {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 1000;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(28, 28, 28, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 50px;
+      padding: 8px 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    }
+
+    /* Bouton Accueil */
+    #accueil-button {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: transparent;
+      color: #ccc;
+      border: none; border-radius: 50px;
+      cursor: pointer; font-size: 0.95rem;
+      text-decoration: none; font-family: 'Outfit', sans-serif; font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    #accueil-button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    #accueil-button svg { flex-shrink: 0; }
+
+    /* Séparateur */
+    .nav-sep {
+      width: 1px; height: 22px;
+      background: rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+
+    /* Dropdown Explorer */
+    .dropdown-container { position: relative; }
+    .dropdown { position: relative; display: inline-block; }
+
+    .dropdown-button {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px; font-size: 0.95rem; font-weight: 600;
+      border-radius: 50px;
+      background: #ff6a00;
+      color: #fff;
+      border: none; cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+      font-family: 'Outfit', sans-serif;
+    }
+    .dropdown-button:hover { background: #e05a00; }
+    .dropdown-button svg { flex-shrink: 0; }
+
+    .dropdown-content {
+      display: none; position: absolute; background: #1f1f1f;
+      min-width: 220px; border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.07);
+      z-index: 10; top: calc(100% + 10px); left: 50%;
+      transform: translateX(-50%);
+      max-height: 600px; overflow-y: auto;
+    }
+
+    .dropdown-content .section {
+      padding: 12px 16px; font-size: 1rem; color: #fff;
+      background: #2c2c2c; border-bottom: 1px solid #3c3c3c;
+      cursor: pointer; transition: background 0.3s ease;
+    }
+    .dropdown-content .section:hover { background: #ff6a00; }
+
+    .dropdown-content .countries { display: none; padding-left: 20px; background: #1a1a1a; }
+    .dropdown-content .countries.show { display: block; }
+
+    .dropdown-content .country { padding: 10px 20px; font-size: 0.9rem; color: #ccc; cursor: pointer; }
+    .dropdown-content .country:hover { background: #ff99cc; color: #fff; }
+
+    .dropdown-content .cities { display: none; padding-left: 30px; background: #252525; }
+    .dropdown-content .cities.show { display: block; }
+
+    .dropdown-content .city { padding: 8px 30px; font-size: 0.85rem; color: #ddd; cursor: pointer; }
+    .dropdown-content .city:hover { background: #ff99cc; color: #fff; }
+
+    .dropdown-content .items { display: none; padding-left: 40px; background: #1a1a1a; }
+    .dropdown-content .items.show { display: block; }
+
+    .dropdown-content .item { padding: 8px 40px; font-size: 0.8rem; color: #bbb; cursor: pointer; }
+    .dropdown-content .item:hover { background: #ff99cc; color: #fff; }
+
+    .leaflet-popup-content-wrapper { background: #1f1f1f; color: #fff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+    .leaflet-popup-content { font-family: 'Outfit', sans-serif; font-size: 0.9rem; padding: 10px; }
+    .leaflet-popup-content a { color: #ff6a00; text-decoration: none; font-weight: 600; }
+    .leaflet-popup-content a:hover { color: #ff99cc; }
+    .leaflet-popup-tip { background: #1f1f1f; }
+
+    .map-container { width: 100%; height: 100vh; position: relative; }
+    #map { width: 100%; height: 100%; background: #1f1f1f; }
+
+    /* Bouton Favoris dans navbar */
+    #favoris-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 18px;
+      background: transparent;
+      color: #ccc;
+      border: none; border-radius: 50px;
+      cursor: pointer; font-size: 0.95rem;
+      font-family: 'Outfit', sans-serif; font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    #favoris-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    #favoris-badge {
+      background: #ff6a00; color: white; border-radius: 50%;
+      width: 20px; height: 20px; font-size: 11px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; margin-left: 2px;
+    }
+
+    #favoris-panel {
+      position: fixed; top: 0; right: -380px; width: 360px; height: 100vh;
+      background: #1f1f1f; z-index: 2000;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.5); transition: right 0.3s ease;
+      display: flex; flex-direction: column; font-family: 'Outfit', sans-serif;
+    }
+    #favoris-panel.open { right: 0; }
+    #favoris-panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px; background: #2c2c2c; border-bottom: 1px solid #3c3c3c;
+    }
+    #favoris-panel-header h2 { font-size: 1.2rem; color: #ff6a00; margin: 0; }
+    #close-favoris { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; line-height: 1; }
+    #close-favoris:hover { color: #ff6a00; }
+    #favoris-list { flex: 1; overflow-y: auto; padding: 16px; }
+    #favoris-vide { color: #888; text-align: center; margin-top: 40px; font-size: 0.95rem; }
+    .favori-item {
+      background: #2c2c2c; border-radius: 8px; padding: 12px 14px;
+      margin-bottom: 10px; display: flex; justify-content: space-between;
+      align-items: center; gap: 10px;
+    }
+    .favori-info { flex: 1; }
+    .favori-nom { font-weight: 600; font-size: 0.95rem; color: #fff; }
+    .favori-type { font-size: 0.78rem; color: #ff6a00; margin-top: 2px; }
+    .favori-actions { display: flex; gap: 8px; }
+    .favori-voir {
+      background: #ff6a00; color: white; border: none; border-radius: 5px;
+      padding: 5px 10px; font-size: 0.78rem; cursor: pointer;
+      font-family: 'Outfit', sans-serif; text-decoration: none; display: inline-block;
+    }
+    .favori-voir:hover { background: #e05500; }
+    .favori-suppr { background: #3c3c3c; color: #ff4444; border: none; border-radius: 5px; padding: 5px 8px; font-size: 0.85rem; cursor: pointer; }
+    .favori-suppr:hover { background: #ff4444; color: white; }
+    #favoris-footer { padding: 16px; border-top: 1px solid #3c3c3c; }
+    #vider-favoris {
+      width: 100%; padding: 10px; background: #3c3c3c; color: #ff4444;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+      font-family: 'Outfit', sans-serif; transition: background 0.2s;
+    }
+    #vider-favoris:hover { background: #ff4444; color: white; }
+    .item-favori-btn { float: right; background: none; border: none; cursor: pointer; font-size: 1rem; line-height: 1; color: #888; padding: 0 0 0 6px; transition: color 0.2s; }
+    .item-favori-btn:hover { color: #ff6a00; }
+    .item-favori-btn.actif { color: #ff6a00; }
+
+    @media (max-width: 600px) {
+      #navbar { top: 10px; padding: 6px 8px; gap: 6px; }
+      #accueil-button, #favoris-btn { padding: 8px 12px; font-size: 0.85rem; }
+      .dropdown-button { padding: 8px 14px; font-size: 0.85rem; }
+      #accueil-button span.nav-label, #favoris-btn span.nav-label { display: none; }
+    }
+
+    /* ── PRO BUTTON ── */
+    #auth-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      background: linear-gradient(135deg, #ff6a00, #ff99cc);
+      color: #fff; border: none; border-radius: 50px;
+      cursor: pointer; font-size: 0.9rem;
+      font-family: 'Outfit', sans-serif; font-weight: 700;
+      transition: opacity 0.2s, transform 0.2s; white-space: nowrap;
+    }
+    #auth-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    #auth-btn.logged { background: rgba(255,255,255,0.08); color: #ccc; font-weight: 600; }
+    #auth-btn.logged:hover { background: rgba(255,255,255,0.14); color: #fff; }
+    /* ── AUTH MODAL ── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(12px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    #auth-overlay.open { opacity: 1; pointer-events: all; }
+    #auth-box {
+      background: #16161f;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 24px; padding: 36px 32px;
+      max-width: 420px; width: 100%; position: relative;
+      transform: scale(0.93) translateY(24px); transition: transform 0.35s cubic-bezier(.2,.8,.3,1);
+      box-shadow: 0 48px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,106,0,0.08);
+    }
+    #auth-overlay.open #auth-box { transform: scale(1) translateY(0); }
+    #auth-close {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,0.06); border: none; color: #888;
+      border-radius: 50%; width: 30px; height: 30px; cursor: pointer;
+      font-size: 0.9rem; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    #auth-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .auth-logo-text {
+      text-align: center; font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px;
+      background: linear-gradient(90deg,#ff6a00,#ff99cc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .auth-tagline {
+      text-align: center; font-size: 0.85rem; color: #666;
+      margin-bottom: 24px; font-family: 'Outfit', sans-serif;
+    }
+    .auth-tabs {
+      display: flex; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 4px; margin-bottom: 26px; gap: 4px;
+    }
+    .auth-tab {
+      flex: 1; padding: 10px; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 600; border: none; cursor: pointer;
+      background: transparent; color: #555;
+      font-family: 'Outfit', sans-serif; transition: all 0.22s;
+    }
+    .auth-tab.active {
+      background: rgba(255,106,0,0.15);
+      color: #ff8533;
+      box-shadow: inset 0 0 0 1px rgba(255,106,0,0.3);
+    }
+    .auth-form-group { margin-bottom: 14px; }
+    .auth-label { display: block; font-size: 0.78rem; font-weight: 600; color: #888; margin-bottom: 7px; letter-spacing: 0.3px; font-family: 'Outfit',sans-serif; }
+    .auth-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+    .auth-forgot { font-size: 0.75rem; color: #ff6a00; cursor: pointer; font-family: 'Outfit',sans-serif; transition: color 0.2s; }
+    .auth-forgot:hover { color: #ff99cc; }
+    .auth-input-wrap { position: relative; }
+    .auth-input-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
+    .auth-field {
+      width: 100%; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09); border-radius: 12px;
+      padding: 12px 44px; color: #fff; font-family: 'Outfit',sans-serif;
+      font-size: 0.93rem; outline: none; transition: border-color 0.2s, background 0.2s;
+    }
+    .auth-field:focus { border-color: rgba(255,106,0,0.5); background: rgba(255,106,0,0.04); }
+    .auth-field::placeholder { color: #3a3a4a; }
+    .auth-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #444; cursor: pointer;
+      display: flex; align-items: center; transition: color 0.2s;
+    }
+    .auth-eye:hover { color: #888; }
+    #auth-msg {
+      font-size: 0.8rem; margin-bottom: 12px; min-height: 18px;
+      text-align: center; font-family: 'Outfit',sans-serif;
+      padding: 0 4px; line-height: 1.5;
+    }
+    #auth-msg.err { color: #ff6b6b; }
+    #auth-msg.ok  { color: #6bffa8; }
+    .auth-go {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg,#ff6a00,#ff99cc);
+      color: #fff; border: none; border-radius: 50px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      font-family: 'Outfit',sans-serif;
+      box-shadow: 0 8px 28px rgba(255,106,0,0.35); transition: all 0.22s;
+      letter-spacing: 0.2px;
+    }
+    .auth-go:hover { box-shadow: 0 14px 40px rgba(255,106,0,0.55); transform: translateY(-2px); }
+    .auth-go:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .auth-switch {
+      text-align: center; font-size: 0.82rem; color: #555;
+      margin-top: 18px; font-family: 'Outfit',sans-serif;
+    }
+    .auth-switch span { color: #ff8533; cursor: pointer; font-weight: 600; }
+    .auth-switch span:hover { color: #ff99cc; }
+    /* ── TOAST ── */
+    #gb-toast {
+      position: fixed; bottom: 22px; left: 50%;
+      transform: translateX(-50%) translateY(70px);
+      background: #1f1f2e; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px; padding: 11px 26px;
+      font-size: 0.86rem; color: #fff; font-weight: 600;
+      z-index: 99999; white-space: nowrap;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+      opacity: 0; box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+      font-family: 'Outfit', sans-serif;
+    }
+    #gb-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* ── USER MENU ── */
+    #user-menu {
+      position: fixed; z-index: 9998; background: #1f1f2e;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+      padding: 8px; min-width: 190px;
+      box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+      font-family: 'Outfit', sans-serif; display: none;
+    }
+    #user-menu.show { display: block; }
+    .umenu-email { padding: 9px 13px 8px; font-size: 0.76rem; color: #666; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 5px; word-break: break-all; }
+    .umenu-item { padding: 9px 13px; font-size: 0.85rem; border-radius: 9px; cursor: pointer; transition: background 0.18s; }
+    .umenu-item:hover { background: rgba(255,255,255,0.07); }
+    .umenu-pro { color: #6bffa8; font-weight: 700; }
+    .umenu-upgrade { color: #ff99cc; font-weight: 700; }
+    .umenu-out { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR FLOTTANTE CENTRÉE ── -->
+<nav id="navbar">
+  <!-- Accueil -->
+  <a href="index.html" id="accueil-button">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+    Accueil
+  </a>
+
+  <div class="nav-sep"></div>
+
+  <!-- Explorer (dropdown) -->
+  <div class="dropdown-container">
+    <div class="dropdown">
+      <button class="dropdown-button" aria-haspopup="true" aria-expanded="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Explorer
+      </button>
+      <div class="dropdown-content" id="main-dropdown">
+        <!-- Généré dynamiquement par JS -->
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-sep"></div>
+
+  <!-- Favoris -->
+  <button id="favoris-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+    </svg>
+    Favoris
+    <span id="favoris-badge">0</span>
+  </button>
+  <div class="nav-sep"></div>
+  <button id="auth-btn" onclick="gbOpenAuth()">✦ Pro</button>
+</nav>
+
+<!-- TOAST -->
+<div id="gb-toast"></div>
+<!-- USER MENU -->
+<div id="user-menu"></div>
+<!-- AUTH MODAL -->
+<div id="auth-overlay" onclick="gbCloseOverlay(event)">
+  <div id="auth-box">
+    <button id="auth-close" onclick="gbCloseAuth()">✕</button>
+
+    <!-- Logo -->
+    <div class="auth-logo-text">GLOBAYA</div>
+    <p class="auth-tagline" id="auth-tagline">Connectez-vous à votre compte</p>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-in" onclick="gbTab('login')">Se connecter</button>
+      <button class="auth-tab" id="tab-up" onclick="gbTab('signup')">Créer un compte</button>
+    </div>
+
+    <!-- Email form -->
+    <div class="auth-form-group">
+      <label class="auth-label">Adresse e-mail</label>
+      <div class="auth-input-wrap">
+        <svg class="auth-input-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+        <input class="auth-field" type="email" id="af-email" placeholder="vous@exemple.com" autocomplete="email"/>
+      </div>
+    </div>
+
+    <div class="auth-form-group">
+      <div class="auth-label-row">
+        <label class="auth-label">Mot de passe</label>
+        <span class="auth-forgot" id="auth-forgot" onclick="gbForgot()">Mot de passe oublié ?</span>
+      </div>
+      <div class="auth-input-wrap">
+        <svg class="auth-input-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <input class="auth-field" type="password" id="af-pass" placeholder="6 caractères minimum" autocomplete="current-password"/>
+        <button class="auth-eye" id="auth-eye" onclick="gbTogglePass()" type="button" tabindex="-1">
+          <svg id="eye-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="auth-msg"></div>
+
+    <button class="auth-go" id="af-btn" onclick="gbDoAuth()">Se connecter</button>
+
+    <p class="auth-switch" id="auth-switch">
+      Pas encore de compte ? <span onclick="gbTab('signup')">S'inscrire gratuitement</span>
+    </p>
+  </div>
+</div>
+
+<div class="map-container">
+  <div id="favoris-panel">
+    <div id="favoris-panel-header">
+      <h2>❤ Mes Favoris</h2>
+      <button id="close-favoris">✕</button>
+    </div>
+    <div id="favoris-list">
+      <p id="favoris-vide">Aucun favori pour l'instant.<br>Clique sur ❤ à côté d\'une activité ou d\'un hôtel !</p>
+    </div>
+    <div id="favoris-footer">
+      <button id="vider-favoris">🗑 Vider tous les favoris</button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+// ============================================================
+// BASE DE DONNÉES CENTRALISÉE
+// Pour ajouter un pays/ville/hôtel/activité :
+//   1. Ajouter le pays dans DATA avec ses villes
+//   2. Chaque ville a : coords, activites[], hotels[]
+//   3. Chaque activité/hôtel a : nom, coords, url
+// ============================================================
+
+const DATA = {
+
+  // ─────────────────────────────────────────
+  // EUROPE
+  // ─────────────────────────────────────────
+
+  "France": {
+    coords: [46.6034, 1.8883],
+    villes: {
+      "Paris": {
+        coords: [48.8566, 2.3522],
+        activites: [
+          { nom: "Musée du Louvre", coords: [48.8606, 2.3376], url: "https://www.louvre.fr" },
+          { nom: "Tour Eiffel", coords: [48.8534, 2.3499], url: "https://www.toureiffel.paris" },
+          { nom: "Arc de Triomphe", coords: [48.8738, 2.2950], url: "https://www.arc-de-triomphe.fr" },
+          { nom: "Cathédrale Notre-Dame", coords: [48.8607, 2.3276], url: "https://www.notredamedeparis.fr" },
+          { nom: "Musée d'Orsay", coords: [48.8600, 2.3266], url: "https://www.musee-orsay.fr" },
+          { nom: "Versailles", coords: [48.8049, 2.1204], url: "https://www.chateauversailles.fr" },
+        ],
+        hotels: [
+          { nom: "Hôtel Plaza Athénée", coords: [48.8719, 2.3316], url: "https://www.plaza-athenee-paris.com" },
+          { nom: "Le Bristol Paris", coords: [48.8656, 2.3212], url: "https://www.lebristolparis.com" },
+          { nom: "Four Seasons George V", coords: [48.8704, 2.3004], url: "https://www.fourseasons.com/paris" },
+          { nom: "Shangri-La Paris", coords: [48.8667, 2.3208], url: "https://www.shangri-la.com/paris" },
+        ]
+      },
+      "Lyon": {
+        coords: [45.7640, 4.8357],
+        activites: [
+          { nom: "Basilique Notre-Dame de Fourvière", coords: [45.7673, 4.8343], url: "https://www.fourviere.org" },
+          { nom: "Parc de la Tête d'Or", coords: [45.7606, 4.8312], url: "https://www.lyon-france.com" },
+          { nom: "Musée des Beaux-Arts", coords: [45.7597, 4.8320], url: "https://www.mba-lyon.fr" },
+          { nom: "Vieux Lyon", coords: [45.7621, 4.8278], url: "https://www.lyon-france.com" },
+        ],
+        hotels: [
+          { nom: "InterContinental Lyon", coords: [45.7580, 4.8300], url: "https://www.ihg.com/intercontinental/hotels/fr/fr/lyon" },
+          { nom: "Villa Florentine", coords: [45.7475, 4.8198], url: "https://www.villa-florentine.com" },
+          { nom: "Sofitel Lyon Bellecour", coords: [45.7539, 4.8330], url: "https://www.sofitel-lyon-bellecour.com" },
+        ]
+      },
+      "Marseille": {
+        coords: [43.2965, 5.3698],
+        activites: [
+          { nom: "Vieux-Port", coords: [43.2928, 5.3539], url: "https://www.marseille-tourisme.com" },
+          { nom: "Parc National des Calanques", coords: [43.2698, 5.3959], url: "https://www.parc-national-calanques.fr" },
+          { nom: "Basilique Notre-Dame de la Garde", coords: [43.2801, 5.3808], url: "https://www.marseille-tourisme.com" },
+        ],
+        hotels: [
+          { nom: "Sofitel Marseille Vieux-Port", coords: [43.2948, 5.3736], url: "https://www.sofitel.com/fr-fr/hotel/0553" },
+          { nom: "InterContinental Marseille", coords: [43.2976, 5.3678], url: "https://www.ihg.com/intercontinental/hotels/fr/fr/marseille" },
+          { nom: "NH Collection Marseille", coords: [43.2920, 5.3580], url: "https://www.nh-hotels.com" },
+        ]
+      },
+      "Nice": {
+        coords: [43.7031, 7.2661],
+        activites: [
+          { nom: "Promenade des Anglais", coords: [43.6951, 7.2718], url: "https://www.nice-tourisme.com" },
+          { nom: "Musée Matisse", coords: [43.7034, 7.2775], url: "https://www.musee-matisse-nice.org" },
+          { nom: "Vieux-Nice", coords: [43.7009, 7.2750], url: "https://www.nice-tourisme.com" },
+        ],
+        hotels: [
+          { nom: "Hôtel Negresco", coords: [43.6987, 7.2697], url: "https://www.hotelnegresco-nice.com" },
+          { nom: "Hyatt Regency Nice", coords: [43.6970, 7.2650], url: "https://www.hyatt.com" },
+          { nom: "Le Méridien Nice", coords: [43.7012, 7.2680], url: "https://www.marriott.com" },
+        ]
+      },
+      "Bordeaux": {
+        coords: [44.8378, -0.5792],
+        activites: [
+          { nom: "Place de la Bourse", coords: [44.8412, -0.5703], url: "https://www.bordeaux-tourisme.com" },
+          { nom: "Cité du Vin", coords: [44.8626, -0.5503], url: "https://www.laciteduvin.com" },
+          { nom: "Grosse Cloche", coords: [44.8354, -0.5758], url: "https://www.bordeaux-tourisme.com" },
+        ],
+        hotels: [
+          { nom: "InterContinental Bordeaux", coords: [44.8429, -0.5731], url: "https://www.ihg.com" },
+          { nom: "Grand Hôtel de Bordeaux", coords: [44.8395, -0.5730], url: "https://www.grandhotelbordeaux.com" },
+        ]
+      },
+      "Strasbourg": {
+        coords: [48.5734, 7.7521],
+        activites: [
+          { nom: "Cathédrale Notre-Dame", coords: [48.5818, 7.7507], url: "https://www.cathedrale-strasbourg.fr" },
+          { nom: "La Petite France", coords: [48.5797, 7.7431], url: "https://www.strasbourg.eu" },
+          { nom: "Musée Alsacien", coords: [48.5795, 7.7521], url: "https://www.musees.strasbourg.eu" },
+        ],
+        hotels: [
+          { nom: "Sofitel Strasbourg Grande Île", coords: [48.5798, 7.7492], url: "https://www.sofitel.com" },
+          { nom: "Régent Petite France", coords: [48.5798, 7.7445], url: "https://www.regent-petite-france.com" },
+        ]
+      },
+    }
+  },
+
+  "Espagne": {
+    coords: [40.4168, -3.7038],
+    villes: {
+      "Madrid": {
+        coords: [40.4168, -3.7038],
+        activites: [
+          { nom: "Musée du Prado", coords: [40.4138, -3.6922], url: "https://www.museodelprado.es" },
+          { nom: "Palais Royal", coords: [40.4180, -3.7143], url: "https://www.patrimonionacional.es" },
+          { nom: "Plaza Mayor", coords: [40.4154, -3.7074], url: "https://www.esmadrid.com" },
+          { nom: "Musée Reina Sofía", coords: [40.4083, -3.6939], url: "https://www.museoreinasofia.es" },
+          { nom: "Parc du Retiro", coords: [40.4153, -3.6844], url: "https://www.esmadrid.com" },
+        ],
+        hotels: [
+          { nom: "Hotel Ritz Madrid", coords: [40.4153, -3.6937], url: "https://www.mandarinoriental.com/madrid" },
+          { nom: "Four Seasons Madrid", coords: [40.4166, -3.7026], url: "https://www.fourseasons.com/madrid" },
+          { nom: "Villa Magna", coords: [40.4270, -3.6877], url: "https://www.villamagna.es" },
+        ]
+      },
+      "Barcelone": {
+        coords: [41.3851, 2.1734],
+        activites: [
+          { nom: "Sagrada Família", coords: [41.4036, 2.1744], url: "https://www.sagradafamilia.org" },
+          { nom: "Parc Güell", coords: [41.4145, 2.1527], url: "https://www.parkguell.cat" },
+          { nom: "Las Ramblas", coords: [41.3797, 2.1740], url: "https://www.barcelonaturisme.com" },
+          { nom: "Palau de la Música", coords: [41.3875, 2.1752], url: "https://www.palaumusica.cat" },
+          { nom: "Camp Nou", coords: [41.3809, 2.1228], url: "https://www.fcbarcelona.es" },
+        ],
+        hotels: [
+          { nom: "Hotel Arts Barcelona", coords: [41.3870, 2.1975], url: "https://www.hotelartsbarcelona.com" },
+          { nom: "Mandarin Oriental Barcelona", coords: [41.3881, 2.1649], url: "https://www.mandarinoriental.com/barcelona" },
+          { nom: "W Barcelona", coords: [41.3718, 2.1893], url: "https://www.marriott.com/barcelona" },
+        ]
+      },
+      "Séville": {
+        coords: [37.3891, -5.9845],
+        activites: [
+          { nom: "Cathédrale de Séville", coords: [37.3857, -5.9930], url: "https://www.catedraldesevilla.es" },
+          { nom: "Alcázar de Séville", coords: [37.3830, -5.9920], url: "https://www.alcazarsevilla.org" },
+          { nom: "Plaza de España", coords: [37.3773, -5.9869], url: "https://www.visitasevilla.es" },
+        ],
+        hotels: [
+          { nom: "Hotel Alfonso XIII", coords: [37.3792, -5.9969], url: "https://www.hotel-alfonsoxiii-seville.com" },
+          { nom: "Gran Meliá Colón", coords: [37.3887, -5.9948], url: "https://www.melia.com" },
+        ]
+      },
+      "Grenade": {
+        coords: [37.1773, -3.5986],
+        activites: [
+          { nom: "Alhambra", coords: [37.1760, -3.5881], url: "https://www.alhambra-patronato.es" },
+          { nom: "Generalife", coords: [37.1772, -3.5843], url: "https://www.alhambra-patronato.es" },
+          { nom: "Albaicín", coords: [37.1808, -3.5956], url: "https://www.granadatur.com" },
+        ],
+        hotels: [
+          { nom: "Parador de Granada", coords: [37.1764, -3.5879], url: "https://www.parador.es" },
+          { nom: "Alhambra Palace Hotel", coords: [37.1745, -3.5920], url: "https://www.h-alhambrapalace.es" },
+        ]
+      },
+      "Bilbao": {
+        coords: [43.2630, -2.9350],
+        activites: [
+          { nom: "Musée Guggenheim", coords: [43.2688, -2.9340], url: "https://www.guggenheim-bilbao.eus" },
+          { nom: "Casco Viejo", coords: [43.2567, -2.9237], url: "https://www.bilbaoturismo.net" },
+          { nom: "Marché de la Ribera", coords: [43.2563, -2.9215], url: "https://www.bilbaoturismo.net" },
+        ],
+        hotels: [
+          { nom: "Gran Hotel Domine", coords: [43.2688, -2.9355], url: "https://www.granhoteldominebilbao.com" },
+          { nom: "Ercilla Hotel", coords: [43.2630, -2.9344], url: "https://www.hotelercilla.es" },
+        ]
+      },
+    }
+  },
+
+  "Italie": {
+    coords: [41.8719, 12.5674],
+    villes: {
+      "Rome": {
+        coords: [41.9028, 12.4964],
+        activites: [
+          { nom: "Colisée", coords: [41.8902, 12.4922], url: "https://www.rome.net/colosseum" },
+          { nom: "Panthéon", coords: [41.8986, 12.4769], url: "https://www.rome.net/pantheon" },
+          { nom: "Forum Romain", coords: [41.9009, 12.4833], url: "https://www.rome.net/roman-forum" },
+          { nom: "Fontaine de Trevi", coords: [41.9009, 12.4833], url: "https://www.rome.net/trevi-fountain" },
+          { nom: "Cité du Vatican", coords: [41.9029, 12.4534], url: "https://www.vaticanstate.va" },
+        ],
+        hotels: [
+          { nom: "Hotel de Russie", coords: [41.9056, 12.4820], url: "https://www.roccofortehotels.com" },
+          { nom: "Anantara Palazzo Naiadi", coords: [41.9041, 12.4956], url: "https://www.anantara.com" },
+          { nom: "The Westin Excelsior Rome", coords: [41.9080, 12.4980], url: "https://www.marriott.com" },
+        ]
+      },
+      "Venise": {
+        coords: [45.4408, 12.3155],
+        activites: [
+          { nom: "Place Saint-Marc", coords: [45.4338, 12.3388], url: "https://www.venise-tourisme.com" },
+          { nom: "Palais des Doges", coords: [45.4347, 12.3397], url: "https://www.venise-tourisme.com" },
+          { nom: "Pont du Rialto", coords: [45.4403, 12.3078], url: "https://www.venise-tourisme.com" },
+          { nom: "Basilique Saint-Marc", coords: [45.4345, 12.3397], url: "https://www.basilicasanmarco.it" },
+        ],
+        hotels: [
+          { nom: "Hotel Danieli", coords: [45.4321, 12.3223], url: "https://www.danielihotelvenice.com" },
+          { nom: "Baglioni Hotel Luna", coords: [45.4308, 12.3326], url: "https://www.baglionihotels.com" },
+          { nom: "The Gritti Palace", coords: [45.4356, 12.3411], url: "https://www.grittihotel.com" },
+        ]
+      },
+      "Florence": {
+        coords: [43.7696, 11.2558],
+        activites: [
+          { nom: "Cathédrale de Florence", coords: [43.7750, 11.2542], url: "https://www.visitflorence.com" },
+          { nom: "Galerie des Offices", coords: [43.7731, 11.2560], url: "https://www.uffizi.it" },
+          { nom: "Ponte Vecchio", coords: [43.7678, 11.2624], url: "https://www.visitflorence.com" },
+          { nom: "Jardins de Boboli", coords: [43.7638, 11.2497], url: "https://www.visitflorence.com" },
+        ],
+        hotels: [
+          { nom: "Four Seasons Florence", coords: [43.7718, 11.2486], url: "https://www.fourseasons.com/florence" },
+          { nom: "Hotel Savoy Florence", coords: [43.7680, 11.2530], url: "https://www.roccofortehotels.com" },
+          { nom: "The St. Regis Florence", coords: [43.7745, 11.2468], url: "https://www.marriott.com" },
+        ]
+      },
+      "Milan": {
+        coords: [45.4642, 9.1900],
+        activites: [
+          { nom: "Duomo de Milan", coords: [45.4654, 9.1859], url: "https://www.duomomilano.it" },
+          { nom: "Teatro alla Scala", coords: [45.4643, 9.1900], url: "https://www.teatroallascala.org" },
+          { nom: "Galerie Vittorio Emanuele II", coords: [45.4683, 9.1814], url: "https://www.gallerievittorioemanuele.it" },
+          { nom: "Pinacothèque de Brera", coords: [45.4720, 9.1869], url: "https://www.pinacotecabrera.org" },
+        ],
+        hotels: [
+          { nom: "Mandarin Oriental Milan", coords: [45.4681, 9.1824], url: "https://www.mandarinoriental.com/milan" },
+          { nom: "Bulgari Hotel Milano", coords: [45.4667, 9.1889], url: "https://www.bulgarihotels.com/milan" },
+          { nom: "Excelsior Hotel Gallia", coords: [45.4723, 9.1945], url: "https://www.excelsiorhotelgallia.com" },
+        ]
+      },
+      "Naples": {
+        coords: [40.8518, 14.2681],
+        activites: [
+          { nom: "Musée Archéologique National", coords: [40.8533, 14.2508], url: "https://www.mann-napoli.it" },
+          { nom: "Castel dell'Ovo", coords: [40.8282, 14.2477], url: "https://www.comune.napoli.it" },
+          { nom: "Pompéi", coords: [40.7506, 14.4874], url: "https://pompeiisites.org" },
+        ],
+        hotels: [
+          { nom: "Grand Hotel Vesuvio", coords: [40.8290, 14.2469], url: "https://www.vesuvio.it" },
+          { nom: "Romeo Hotel", coords: [40.8395, 14.2575], url: "https://www.romeohotel.it" },
+        ]
+      },
+      "Cinque Terre": {
+        coords: [44.1290, 9.7178],
+        activites: [
+          { nom: "Riomaggiore", coords: [44.0997, 9.7385], url: "https://www.cinqueterre.it" },
+          { nom: "Vernazza", coords: [44.1358, 9.6840], url: "https://www.cinqueterre.it" },
+          { nom: "Sentiero Azzurro", coords: [44.1200, 9.7100], url: "https://www.cinqueterre.it" },
+        ],
+        hotels: [
+          { nom: "Hotel Porto Roca", coords: [44.1291, 9.6583], url: "https://www.portoroca.it" },
+          { nom: "La Spezia Suite", coords: [44.1024, 9.8239], url: "https://www.booking.com" },
+        ]
+      },
+    }
+  },
+
+  "Allemagne": {
+    coords: [51.1657, 10.4515],
+    villes: {
+      "Berlin": {
+        coords: [52.5200, 13.4050],
+        activites: [
+          { nom: "Porte de Brandebourg", coords: [52.5163, 13.3777], url: "https://www.visitberlin.de" },
+          { nom: "Musée de Pergame", coords: [52.5212, 13.3965], url: "https://www.smb.museum" },
+          { nom: "Mémorial de l'Holocauste", coords: [52.5138, 13.3787], url: "https://www.stiftung-denkmal.de" },
+          { nom: "Île aux Musées", coords: [52.5196, 13.3985], url: "https://www.museumsportal-berlin.de" },
+          { nom: "East Side Gallery", coords: [52.5053, 13.4394], url: "https://www.eastsidegallery-berlin.de" },
+        ],
+        hotels: [
+          { nom: "Hotel Adlon Kempinski", coords: [52.5163, 13.3807], url: "https://www.kempinski.com/berlin" },
+          { nom: "The Ritz-Carlton Berlin", coords: [52.5097, 13.3763], url: "https://www.ritzcarlton.com/berlin" },
+          { nom: "Soho House Berlin", coords: [52.5270, 13.4162], url: "https://www.sohohouseberlin.com" },
+        ]
+      },
+      "Munich": {
+        coords: [48.1351, 11.5820],
+        activites: [
+          { nom: "Marienplatz", coords: [48.1374, 11.5755], url: "https://www.muenchen.de" },
+          { nom: "Palais de Nymphenburg", coords: [48.1582, 11.5033], url: "https://www.schloss-nymphenburg.de" },
+          { nom: "Deutsches Museum", coords: [48.1299, 11.5836], url: "https://www.deutsches-museum.de" },
+          { nom: "Jardin Anglais", coords: [48.1642, 11.6053], url: "https://www.muenchen.de" },
+        ],
+        hotels: [
+          { nom: "Bayerischer Hof", coords: [48.1404, 11.5718], url: "https://www.bayerischerhof.de" },
+          { nom: "Hotel Vier Jahreszeiten", coords: [48.1393, 11.5773], url: "https://www.kempinski.com/munich" },
+          { nom: "Mandarin Oriental Munich", coords: [48.1382, 11.5808], url: "https://www.mandarinoriental.com/munich" },
+        ]
+      },
+      "Hambourg": {
+        coords: [53.5511, 9.9937],
+        activites: [
+          { nom: "Elbphilharmonie", coords: [53.5413, 9.9842], url: "https://www.elbphilharmonie.de" },
+          { nom: "Speicherstadt", coords: [53.5436, 9.9921], url: "https://www.hamburg-tourism.de" },
+          { nom: "Miniatur Wunderland", coords: [53.5437, 9.9892], url: "https://www.miniatur-wunderland.de" },
+        ],
+        hotels: [
+          { nom: "The Fontenay", coords: [53.5700, 9.9860], url: "https://www.thefontenay.de" },
+          { nom: "Vier Jahreszeiten Hamburg", coords: [53.5680, 9.9906], url: "https://www.hvj.de" },
+        ]
+      },
+      "Cologne": {
+        coords: [50.9333, 6.9500],
+        activites: [
+          { nom: "Cathédrale de Cologne", coords: [50.9413, 6.9583], url: "https://www.koelner-dom.de" },
+          { nom: "Musée Ludwig", coords: [50.9401, 6.9599], url: "https://www.museum-ludwig.de" },
+          { nom: "Vieille ville de Cologne", coords: [50.9384, 6.9578], url: "https://www.cologne-tourism.com" },
+        ],
+        hotels: [
+          { nom: "Excelsior Hotel Ernst", coords: [50.9414, 6.9574], url: "https://www.excelsiorhotelernst.com" },
+          { nom: "Maritim Hotel Cologne", coords: [50.9374, 6.9612], url: "https://www.maritim.com" },
+        ]
+      },
+      "Heidelberg": {
+        coords: [49.3988, 8.6724],
+        activites: [
+          { nom: "Château de Heidelberg", coords: [49.4101, 8.7157], url: "https://www.schloss-heidelberg.de" },
+          { nom: "Vieille ville", coords: [49.4100, 8.6980], url: "https://www.heidelberg-marketing.com" },
+          { nom: "Rue Principale", coords: [49.4079, 8.6942], url: "https://www.heidelberg-marketing.com" },
+        ],
+        hotels: [
+          { nom: "Heidelberg Marriott", coords: [49.4085, 8.6975], url: "https://www.marriott.com" },
+          { nom: "Hotel Zum Ritter", coords: [49.4094, 8.7006], url: "https://www.ritter-heidelberg.de" },
+        ]
+      },
+    }
+  },
+
+  "Portugal": {
+    coords: [39.3999, -8.2245],
+    villes: {
+      "Lisbonne": {
+        coords: [38.7169, -9.1395],
+        activites: [
+          { nom: "Tour de Belém", coords: [38.6916, -9.2160], url: "https://www.torrebelem.pt" },
+          { nom: "Monastère des Jerónimos", coords: [38.6979, -9.2066], url: "https://www.patrimoniocultural.gov.pt" },
+          { nom: "Alfama", coords: [38.7115, -9.1286], url: "https://www.visitlisboa.com" },
+          { nom: "Tramway 28", coords: [38.7076, -9.1365], url: "https://www.visitlisboa.com" },
+          { nom: "Castelo de São Jorge", coords: [38.7139, -9.1334], url: "https://www.castelodesaojorge.pt" },
+        ],
+        hotels: [
+          { nom: "Bairro Alto Hotel", coords: [38.7131, -9.1432], url: "https://www.bairroaltohotel.com" },
+          { nom: "Four Seasons Ritz Lisbonne", coords: [38.7199, -9.1508], url: "https://www.fourseasons.com/lisbon" },
+          { nom: "Memmo Alfama", coords: [38.7100, -9.1265], url: "https://www.memmohotels.com" },
+        ]
+      },
+      "Porto": {
+        coords: [41.1579, -8.6291],
+        activites: [
+          { nom: "Ribeira", coords: [41.1404, -8.6135], url: "https://www.visitporto.travel" },
+          { nom: "Pont Dom-Luís I", coords: [41.1396, -8.6098], url: "https://www.visitporto.travel" },
+          { nom: "Librairie Lello", coords: [41.1467, -8.6152], url: "https://www.livrarialello.pt" },
+          { nom: "Cave Graham's", coords: [41.1385, -8.6187], url: "https://www.grahams-port.com" },
+        ],
+        hotels: [
+          { nom: "The Yeatman", coords: [41.1369, -8.6180], url: "https://www.theyeatman.com" },
+          { nom: "Torel Palace Porto", coords: [41.1473, -8.6116], url: "https://www.torelpalaceporto.com" },
+        ]
+      },
+      "Algarve": {
+        coords: [37.0179, -7.9307],
+        activites: [
+          { nom: "Plage de Lagos", coords: [37.1028, -8.6779], url: "https://www.visitalgarve.pt" },
+          { nom: "Cabo de São Vicente", coords: [37.0229, -8.9950], url: "https://www.visitalgarve.pt" },
+          { nom: "Grotte de Benagil", coords: [37.0847, -8.4283], url: "https://www.visitalgarve.pt" },
+        ],
+        hotels: [
+          { nom: "Vila Vita Parc", coords: [37.0989, -8.3927], url: "https://www.vilavitaparc.com" },
+          { nom: "Conrad Algarve", coords: [37.0728, -8.0399], url: "https://www.hilton.com" },
+        ]
+      },
+    }
+  },
+
+  "Grèce": {
+    coords: [39.0742, 21.8243],
+    villes: {
+      "Athènes": {
+        coords: [37.9838, 23.7275],
+        activites: [
+          { nom: "Acropole d'Athènes", coords: [37.9715, 23.7268], url: "https://www.theacropolismuseum.gr" },
+          { nom: "Parthénon", coords: [37.9715, 23.7268], url: "https://www.culture.gr" },
+          { nom: "Agora antique", coords: [37.9755, 23.7216], url: "https://www.ascsa.edu.gr" },
+          { nom: "Quartier Monastiraki", coords: [37.9760, 23.7254], url: "https://www.visitgreece.gr" },
+        ],
+        hotels: [
+          { nom: "Hotel Grande Bretagne", coords: [37.9757, 23.7352], url: "https://www.grandebretagne.gr" },
+          { nom: "King George Athens", coords: [37.9756, 23.7349], url: "https://www.marriott.com" },
+          { nom: "Electra Palace Athens", coords: [37.9732, 23.7283], url: "https://www.electrahotels.gr" },
+        ]
+      },
+      "Santorin": {
+        coords: [36.3932, 25.4615],
+        activites: [
+          { nom: "Oia", coords: [36.4618, 25.3753], url: "https://www.santorin.gr" },
+          { nom: "Fira", coords: [36.4173, 25.4322], url: "https://www.santorin.gr" },
+          { nom: "Akrotiri (site archéo.)", coords: [36.3518, 25.4040], url: "https://www.santorin.gr" },
+        ],
+        hotels: [
+          { nom: "Katikies Hotel", coords: [36.4620, 25.3750], url: "https://www.katikies.com" },
+          { nom: "Canaves Oia Epitome", coords: [36.4601, 25.3762], url: "https://www.canaves.com" },
+        ]
+      },
+      "Mykonos": {
+        coords: [37.4467, 25.3289],
+        activites: [
+          { nom: "Mykonos Town", coords: [37.4467, 25.3289], url: "https://www.mykonos.gr" },
+          { nom: "Plage de Paradise", coords: [37.4196, 25.3504], url: "https://www.mykonos.gr" },
+          { nom: "Les Moulins de Mykonos", coords: [37.4454, 25.3247], url: "https://www.mykonos.gr" },
+        ],
+        hotels: [
+          { nom: "Cavo Tagoo Mykonos", coords: [37.4546, 25.3233], url: "https://www.cavotagoo.gr" },
+          { nom: "Belvedere Hotel Mykonos", coords: [37.4480, 25.3300], url: "https://www.belvederehotel.com" },
+        ]
+      },
+      "Crète": {
+        coords: [35.2401, 24.8093],
+        activites: [
+          { nom: "Palais de Cnossos", coords: [35.2983, 25.1625], url: "https://www.culture.gr" },
+          { nom: "Gorges de Samaria", coords: [35.2747, 23.9656], url: "https://www.explorecrete.com" },
+          { nom: "Héraklion", coords: [35.3387, 25.1442], url: "https://www.heraklion.gr" },
+        ],
+        hotels: [
+          { nom: "Domes of Elounda", coords: [35.2596, 25.7226], url: "https://www.domesresorts.com" },
+          { nom: "Blue Palace Crete", coords: [35.2590, 25.7190], url: "https://www.bluepalace.gr" },
+        ]
+      },
+    }
+  },
+
+  "Pays-Bas": {
+    coords: [52.3676, 4.9041],
+    villes: {
+      "Amsterdam": {
+        coords: [52.3676, 4.9041],
+        activites: [
+          { nom: "Musée Rijksmuseum", coords: [52.3600, 4.8852], url: "https://www.rijksmuseum.nl" },
+          { nom: "Musée Anne Frank", coords: [52.3752, 4.8840], url: "https://www.annefrank.org" },
+          { nom: "Canaux d'Amsterdam", coords: [52.3725, 4.8900], url: "https://www.iamsterdam.com" },
+          { nom: "Van Gogh Museum", coords: [52.3584, 4.8811], url: "https://www.vangoghmuseum.nl" },
+        ],
+        hotels: [
+          { nom: "Waldorf Astoria Amsterdam", coords: [52.3665, 4.8848], url: "https://www.hilton.com" },
+          { nom: "Hotel V Nesplein", coords: [52.3713, 4.8975], url: "https://www.hotelv.nl" },
+          { nom: "Conservatorium Hotel", coords: [52.3606, 4.8824], url: "https://www.conservatoriumhotel.com" },
+        ]
+      },
+      "Rotterdam": {
+        coords: [51.9225, 4.4792],
+        activites: [
+          { nom: "Maisons Cubes", coords: [51.9208, 4.4881], url: "https://www.rotterdam.info" },
+          { nom: "Markthal Rotterdam", coords: [51.9198, 4.4862], url: "https://www.markthal.nl" },
+          { nom: "Musée Boijmans", coords: [51.9141, 4.4715], url: "https://www.boijmans.nl" },
+        ],
+        hotels: [
+          { nom: "Nhow Rotterdam", coords: [51.9085, 4.4850], url: "https://www.nhow-hotels.com" },
+          { nom: "Mainport Hotel", coords: [51.9139, 4.4875], url: "https://www.mainporthotel.com" },
+        ]
+      },
+    }
+  },
+
+  "Autriche": {
+    coords: [47.5162, 14.5501],
+    villes: {
+      "Vienne": {
+        coords: [48.2082, 16.3738],
+        activites: [
+          { nom: "Palais de Schönbrunn", coords: [48.1845, 16.3122], url: "https://www.schoenbrunn.at" },
+          { nom: "Musée d'Histoire de l'Art", coords: [48.2032, 16.3614], url: "https://www.khm.at" },
+          { nom: "Opéra de Vienne", coords: [48.2030, 16.3692], url: "https://www.wiener-staatsoper.at" },
+          { nom: "Belvedere", coords: [48.1914, 16.3808], url: "https://www.belvedere.at" },
+          { nom: "Prater (Grande Roue)", coords: [48.2166, 16.3967], url: "https://www.wienerriesenrad.com" },
+        ],
+        hotels: [
+          { nom: "Hotel Sacher Wien", coords: [48.2030, 16.3700], url: "https://www.sacher.com" },
+          { nom: "The Ritz-Carlton Vienna", coords: [48.2009, 16.3676], url: "https://www.ritzcarlton.com/vienna" },
+          { nom: "Imperial Hotel Vienna", coords: [48.2019, 16.3709], url: "https://www.marriott.com" },
+        ]
+      },
+      "Salzbourg": {
+        coords: [47.8095, 13.0550],
+        activites: [
+          { nom: "Forteresse Hohensalzburg", coords: [47.7954, 13.0472], url: "https://www.salzburg-burgen.at" },
+          { nom: "Maison natale de Mozart", coords: [47.8005, 13.0440], url: "https://www.mozarteum.at" },
+          { nom: "Mirabell et ses jardins", coords: [47.8047, 13.0433], url: "https://www.salzburg.info" },
+        ],
+        hotels: [
+          { nom: "Hotel Goldener Hirsch", coords: [47.7999, 13.0451], url: "https://www.marriott.com" },
+          { nom: "Schloss Mönchstein", coords: [47.7978, 13.0432], url: "https://www.monchstein.at" },
+        ]
+      },
+      "Hallstatt": {
+        coords: [47.5623, 13.6493],
+        activites: [
+          { nom: "Village de Hallstatt", coords: [47.5623, 13.6493], url: "https://www.hallstatt.net" },
+          { nom: "Mine de sel", coords: [47.5598, 13.6507], url: "https://www.salzwelten.at" },
+          { nom: "Lac de Hallstatt", coords: [47.5550, 13.6420], url: "https://www.hallstatt.net" },
+        ],
+        hotels: [
+          { nom: "Heritage Hotel Hallstatt", coords: [47.5623, 13.6493], url: "https://www.hallstatt-heritage.com" },
+          { nom: "Seehotel Grüner Baum", coords: [47.5619, 13.6490], url: "https://www.gruenerbaum.cc" },
+        ]
+      },
+    }
+  },
+
+  "Suisse": {
+    coords: [46.8182, 8.2275],
+    villes: {
+      "Genève": {
+        coords: [46.2044, 6.1432],
+        activites: [
+          { nom: "Jet d'eau de Genève", coords: [46.2059, 6.1562], url: "https://www.geneve.com" },
+          { nom: "Vieille Ville de Genève", coords: [46.2014, 6.1471], url: "https://www.geneve.com" },
+          { nom: "Palais des Nations", coords: [46.2258, 6.1417], url: "https://www.unog.ch" },
+          { nom: "CERN", coords: [46.2330, 6.0555], url: "https://www.cern.ch" },
+        ],
+        hotels: [
+          { nom: "Hôtel du Rhône", coords: [46.2028, 6.1449], url: "https://www.hoteldurhone.com" },
+          { nom: "Four Seasons Genève", coords: [46.2155, 6.1471], url: "https://www.fourseasons.com/geneva" },
+          { nom: "Le Richemond Genève", coords: [46.2083, 6.1494], url: "https://www.lerichemond.com" },
+        ]
+      },
+      "Zurich": {
+        coords: [47.3769, 8.5417],
+        activites: [
+          { nom: "Grossmünster", coords: [47.3699, 8.5441], url: "https://www.grossmuenster.ch" },
+          { nom: "Kunsthaus Zurich", coords: [47.3706, 8.5484], url: "https://www.kunsthaus.ch" },
+          { nom: "Lac de Zurich", coords: [47.3623, 8.5476], url: "https://www.zuerich.com" },
+          { nom: "Bahnhofstrasse", coords: [47.3745, 8.5375], url: "https://www.zuerich.com" },
+        ],
+        hotels: [
+          { nom: "The Dolder Grand", coords: [47.3668, 8.5695], url: "https://www.thedoldergrand.com" },
+          { nom: "Baur au Lac", coords: [47.3658, 8.5395], url: "https://www.bauraulac.ch" },
+          { nom: "Park Hyatt Zurich", coords: [47.3646, 8.5354], url: "https://www.hyatt.com" },
+        ]
+      },
+      "Interlaken": {
+        coords: [46.6863, 7.8632],
+        activites: [
+          { nom: "Jungfraujoch", coords: [46.5476, 7.9875], url: "https://www.jungfrau.ch" },
+          { nom: "Grindelwald", coords: [46.6242, 8.0411], url: "https://www.grindelwald.ch" },
+          { nom: "Lac de Thoune", coords: [46.7470, 7.6306], url: "https://www.interlaken.ch" },
+        ],
+        hotels: [
+          { nom: "Victoria-Jungfrau Grand Hotel", coords: [46.6858, 7.8568], url: "https://www.victoria-jungfrau.ch" },
+          { nom: "Hotel Du Nord Interlaken", coords: [46.6864, 7.8631], url: "https://www.hotel-du-nord.ch" },
+        ]
+      },
+    }
+  },
+
+  "République Tchèque": {
+    coords: [49.8175, 15.4730],
+    villes: {
+      "Prague": {
+        coords: [50.0755, 14.4378],
+        activites: [
+          { nom: "Château de Prague", coords: [50.0912, 14.4017], url: "https://www.hrad.cz" },
+          { nom: "Pont Charles", coords: [50.0865, 14.4114], url: "https://www.prague.eu" },
+          { nom: "Place de la Vieille Ville", coords: [50.0873, 14.4208], url: "https://www.prague.eu" },
+          { nom: "Quartier Josefov", coords: [50.0901, 14.4174], url: "https://www.jewishmuseum.cz" },
+        ],
+        hotels: [
+          { nom: "Four Seasons Prague", coords: [50.0888, 14.4143], url: "https://www.fourseasons.com/prague" },
+          { nom: "The Emblem Prague", coords: [50.0861, 14.4218], url: "https://www.emblemprague.com" },
+          { nom: "Hotel Aria Prague", coords: [50.0843, 14.4043], url: "https://www.ariahotel.net" },
+        ]
+      },
+    }
+  },
+
+  "Hongrie": {
+    coords: [47.4979, 19.0402],
+    villes: {
+      "Budapest": {
+        coords: [47.4979, 19.0402],
+        activites: [
+          { nom: "Parlement de Budapest", coords: [47.5072, 19.0456], url: "https://www.parlament.hu" },
+          { nom: "Bains Széchenyi", coords: [47.5186, 19.0813], url: "https://www.szechenyibath.hu" },
+          { nom: "Bastions des Pêcheurs", coords: [47.5017, 19.0345], url: "https://www.budapest.com" },
+          { nom: "Château de Buda", coords: [47.4960, 19.0398], url: "https://www.mng.hu" },
+        ],
+        hotels: [
+          { nom: "Four Seasons Gresham Palace", coords: [47.5018, 19.0480], url: "https://www.fourseasons.com/budapest" },
+          { nom: "Aria Hotel Budapest", coords: [47.4993, 19.0356], url: "https://www.ariahotelbudapest.com" },
+          { nom: "Kempinski Corvinus Budapest", coords: [47.4999, 19.0553], url: "https://www.kempinski.com/budapest" },
+        ]
+      },
+    }
+  },
+
+  "Pologne": {
+    coords: [52.2297, 21.0122],
+    villes: {
+      "Varsovie": {
+        coords: [52.2297, 21.0122],
+        activites: [
+          { nom: "Vieille Ville de Varsovie", coords: [52.2502, 21.0122], url: "https://www.warsawtour.pl" },
+          { nom: "Palais de la Culture", coords: [52.2319, 21.0067], url: "https://www.pkin.pl" },
+          { nom: "Musée du Soulèvement", coords: [52.2320, 20.9810], url: "https://www.1944.pl" },
+        ],
+        hotels: [
+          { nom: "Hotel Bristol Warsaw", coords: [52.2380, 21.0169], url: "https://www.hotelbristolwarsaw.pl" },
+          { nom: "Raffles Europejski Warsaw", coords: [52.2374, 21.0151], url: "https://www.raffles.com/warsaw" },
+        ]
+      },
+      "Cracovie": {
+        coords: [50.0647, 19.9450],
+        activites: [
+          { nom: "Vieille Ville de Cracovie", coords: [50.0614, 19.9366], url: "https://www.krakow.pl" },
+          { nom: "Château du Wawel", coords: [50.0540, 19.9352], url: "https://www.wawel.krakow.pl" },
+          { nom: "Quartier Kazimierz", coords: [50.0492, 19.9466], url: "https://www.krakow.pl" },
+          { nom: "Mines de sel de Wieliczka", coords: [49.9834, 20.0548], url: "https://www.wieliczka-saltmine.com" },
+        ],
+        hotels: [
+          { nom: "Hotel Copernicus Cracovie", coords: [50.0544, 19.9358], url: "https://www.copernicus.hotel.com.pl" },
+          { nom: "Sheraton Grand Krakow", coords: [50.0589, 19.9352], url: "https://www.marriott.com" },
+        ]
+      },
+    }
+  },
+
+  "Norvège": {
+    coords: [60.4720, 8.4689],
+    villes: {
+      "Oslo": {
+        coords: [59.9139, 10.7522],
+        activites: [
+          { nom: "Opéra d'Oslo", coords: [59.9075, 10.7531], url: "https://www.operaen.no" },
+          { nom: "Musée Viking", coords: [59.9047, 10.6830], url: "https://www.khm.uio.no" },
+          { nom: "Forteresse d'Akershus", coords: [59.9071, 10.7374], url: "https://www.oslo.no" },
+          { nom: "Parc Vigeland", coords: [59.9267, 10.6997], url: "https://www.vigeland.museum.no" },
+        ],
+        hotels: [
+          { nom: "The Thief Oslo", coords: [59.9120, 10.7268], url: "https://www.thethief.com" },
+          { nom: "Grand Hotel Oslo", coords: [59.9140, 10.7380], url: "https://www.grand.no" },
+        ]
+      },
+      "Bergen": {
+        coords: [60.3913, 5.3221],
+        activites: [
+          { nom: "Bryggen (quai hanséatique)", coords: [60.3977, 5.3235], url: "https://www.visitbergen.com" },
+          { nom: "Funiculaire Fløibanen", coords: [60.3915, 5.3313], url: "https://www.floibanen.no" },
+          { nom: "Marché aux poissons", coords: [60.3955, 5.3228], url: "https://www.visitbergen.com" },
+        ],
+        hotels: [
+          { nom: "Sandven Hotel", coords: [60.3913, 5.3221], url: "https://www.sandvenhotel.no" },
+          { nom: "Radisson Blu Royal Bergen", coords: [60.3908, 5.3251], url: "https://www.radissonhotels.com" },
+        ]
+      },
+      "Tromsø": {
+        coords: [69.6492, 18.9553],
+        activites: [
+          { nom: "Cathédrale Arctique", coords: [69.6446, 18.9876], url: "https://www.ishavskatedralen.no" },
+          { nom: "Aurores Boréales", coords: [69.6492, 18.9553], url: "https://www.visittromso.no" },
+          { nom: "Télécabine de Storsteinen", coords: [69.6480, 18.9540], url: "https://www.fjellheisen.no" },
+        ],
+        hotels: [
+          { nom: "Clarion The Edge Tromsø", coords: [69.6500, 18.9567], url: "https://www.nordicchoicehotels.com" },
+          { nom: "Camp Tamok", coords: [69.5100, 19.3700], url: "https://www.camptamok.no" },
+        ]
+      },
+    }
+  },
+
+  "Suède": {
+    coords: [60.1282, 18.6435],
+    villes: {
+      "Stockholm": {
+        coords: [59.3293, 18.0686],
+        activites: [
+          { nom: "Gamla Stan (Vieille Ville)", coords: [59.3233, 18.0711], url: "https://www.visitstockholm.com" },
+          { nom: "Musée Vasa", coords: [59.3280, 18.0914], url: "https://www.vasamuseet.se" },
+          { nom: "Palais Royal de Stockholm", coords: [59.3270, 18.0722], url: "https://www.kungahuset.se" },
+          { nom: "ABBA The Museum", coords: [59.3250, 18.0978], url: "https://www.abbathemuseum.com" },
+        ],
+        hotels: [
+          { nom: "Grand Hôtel Stockholm", coords: [59.3305, 18.0778], url: "https://www.grandhotel.se" },
+          { nom: "Bank Hotel Stockholm", coords: [59.3318, 18.0663], url: "https://www.bankhotel.se" },
+        ]
+      },
+      "Göteborg": {
+        coords: [57.7089, 11.9746],
+        activites: [
+          { nom: "Liseberg (parc d'attractions)", coords: [57.6969, 11.9924], url: "https://www.liseberg.se" },
+          { nom: "Musée Universeum", coords: [57.6969, 11.9896], url: "https://www.universeum.se" },
+          { nom: "Haga (quartier historique)", coords: [57.7016, 11.9635], url: "https://www.goteborg.com" },
+        ],
+        hotels: [
+          { nom: "Clarion Post Göteborg", coords: [57.7074, 11.9720], url: "https://www.nordicchoicehotels.com" },
+          { nom: "Elite Park Avenue", coords: [57.7001, 11.9791], url: "https://www.elite.se" },
+        ]
+      },
+    }
+  },
+
+  "Danemark": {
+    coords: [56.2639, 9.5018],
+    villes: {
+      "Copenhague": {
+        coords: [55.6761, 12.5683],
+        activites: [
+          { nom: "La Petite Sirène", coords: [55.6929, 12.5991], url: "https://www.visitcopenhagen.com" },
+          { nom: "Nyhavn", coords: [55.6795, 12.5891], url: "https://www.visitcopenhagen.com" },
+          { nom: "Tivoli Gardens", coords: [55.6736, 12.5682], url: "https://www.tivoligardens.com" },
+          { nom: "Palais de Christiansborg", coords: [55.6757, 12.5796], url: "https://www.christiansborg.dk" },
+        ],
+        hotels: [
+          { nom: "Hotel D'Angleterre Copenhague", coords: [55.6808, 12.5836], url: "https://www.dangleterre.com" },
+          { nom: "Nimb Hotel", coords: [55.6738, 12.5685], url: "https://www.nimb.dk" },
+        ]
+      },
+    }
+  },
+
+  "Belgique": {
+    coords: [50.8503, 4.3517],
+    villes: {
+      "Bruxelles": {
+        coords: [50.8503, 4.3517],
+        activites: [
+          { nom: "Grand-Place", coords: [50.8467, 4.3525], url: "https://www.visitbrussels.be" },
+          { nom: "Manneken Pis", coords: [50.8450, 4.3499], url: "https://www.visitbrussels.be" },
+          { nom: "Musée Magritte", coords: [50.8484, 4.3567], url: "https://www.musee-magritte-museum.be" },
+          { nom: "Atomium", coords: [50.8947, 4.3414], url: "https://www.atomium.be" },
+        ],
+        hotels: [
+          { nom: "Hôtel Amigo Bruxelles", coords: [50.8454, 4.3527], url: "https://www.roccofortehotels.com" },
+          { nom: "The Hotel Brussels", coords: [50.8425, 4.3566], url: "https://www.thehotel.be" },
+        ]
+      },
+      "Bruges": {
+        coords: [51.2093, 3.2247],
+        activites: [
+          { nom: "Grand-Place de Bruges", coords: [51.2087, 3.2235], url: "https://www.visitbruges.be" },
+          { nom: "Béguinage", coords: [51.1995, 3.2214], url: "https://www.visitbruges.be" },
+          { nom: "Canaux de Bruges", coords: [51.2084, 3.2257], url: "https://www.visitbruges.be" },
+        ],
+        hotels: [
+          { nom: "De Tuilerieen Bruges", coords: [51.2084, 3.2225], url: "https://www.hoteltuilerieen.com" },
+          { nom: "Hotel Dukes' Palace", coords: [51.2104, 3.2248], url: "https://www.hoteldukespalace.com" },
+        ]
+      },
+    }
+  },
+
+  "Écosse": {
+    coords: [56.4907, -4.2026],
+    villes: {
+      "Édimbourg": {
+        coords: [55.9533, -3.1883],
+        activites: [
+          { nom: "Château d'Édimbourg", coords: [55.9486, -3.1999], url: "https://www.edinburghcastle.scot" },
+          { nom: "Royal Mile", coords: [55.9496, -3.1897], url: "https://www.visitscotland.com" },
+          { nom: "Palais de Holyroodhouse", coords: [55.9524, -3.1718], url: "https://www.rct.uk" },
+          { nom: "Arthur's Seat", coords: [55.9444, -3.1617], url: "https://www.visitscotland.com" },
+        ],
+        hotels: [
+          { nom: "The Scotsman Hotel", coords: [55.9517, -3.1909], url: "https://www.thescotsmanhotel.co.uk" },
+          { nom: "Balmoral Hotel Edinburgh", coords: [55.9524, -3.1889], url: "https://www.roccofortehotels.com" },
+        ]
+      },
+      "Highlands": {
+        coords: [57.1097, -4.6875],
+        activites: [
+          { nom: "Loch Ness", coords: [57.3229, -4.4244], url: "https://www.visitscotland.com" },
+          { nom: "Château de Eilean Donan", coords: [57.2744, -5.5175], url: "https://www.eileandonancastle.com" },
+          { nom: "Glencoe", coords: [56.6800, -5.1000], url: "https://www.visitscotland.com" },
+        ],
+        hotels: [
+          { nom: "Inverlochy Castle Hotel", coords: [56.8460, -5.0907], url: "https://www.inverlochycastlehotel.com" },
+          { nom: "Gleneagles Hotel", coords: [56.2783, -3.7298], url: "https://www.gleneagles.com" },
+        ]
+      },
+    }
+  },
+
+  "Angleterre": {
+    coords: [52.3555, -1.1743],
+    villes: {
+      "Londres": {
+        coords: [51.5074, -0.1278],
+        activites: [
+          { nom: "Big Ben & Parlement", coords: [51.4999, -0.1247], url: "https://www.parliament.uk" },
+          { nom: "Tour de Londres", coords: [51.5081, -0.0759], url: "https://www.hrp.org.uk/tower-of-london" },
+          { nom: "British Museum", coords: [51.5194, -0.1270], url: "https://www.britishmuseum.org" },
+          { nom: "Buckingham Palace", coords: [51.5014, -0.1419], url: "https://www.rct.uk" },
+          { nom: "Tate Modern", coords: [51.5076, -0.0994], url: "https://www.tate.org.uk" },
+        ],
+        hotels: [
+          { nom: "The Savoy London", coords: [51.5103, -0.1205], url: "https://www.thesavoylondon.com" },
+          { nom: "Claridge's London", coords: [51.5124, -0.1479], url: "https://www.claridges.co.uk" },
+          { nom: "The Ritz London", coords: [51.5072, -0.1418], url: "https://www.theritzlondon.com" },
+        ]
+      },
+      "Oxford": {
+        coords: [51.7520, -1.2577],
+        activites: [
+          { nom: "Université d'Oxford", coords: [51.7540, -1.2544], url: "https://www.ox.ac.uk" },
+          { nom: "Bodleian Library", coords: [51.7542, -1.2535], url: "https://www.bodleian.ox.ac.uk" },
+          { nom: "Ashmolean Museum", coords: [51.7553, -1.2601], url: "https://www.ashmolean.org" },
+        ],
+        hotels: [
+          { nom: "Randolph Hotel Oxford", coords: [51.7541, -1.2598], url: "https://www.graduatehotels.com/oxford" },
+          { nom: "Malmaison Oxford", coords: [51.7517, -1.2433], url: "https://www.malmaison.com" },
+        ]
+      },
+      "Bath": {
+        coords: [51.3781, -2.3597],
+        activites: [
+          { nom: "Thermes Romains de Bath", coords: [51.3813, -2.3596], url: "https://www.romanbaths.co.uk" },
+          { nom: "Abbaye de Bath", coords: [51.3815, -2.3578], url: "https://www.bathabbey.org" },
+          { nom: "Royal Crescent", coords: [51.3850, -2.3674], url: "https://www.visitbath.co.uk" },
+        ],
+        hotels: [
+          { nom: "The Royal Crescent Hotel", coords: [51.3852, -2.3674], url: "https://www.royalcrescent.co.uk" },
+          { nom: "Gainsborough Bath Spa", coords: [51.3808, -2.3598], url: "https://www.thegainsboroughbathspa.co.uk" },
+        ]
+      },
+    }
+  },
+
+  "Irlande": {
+    coords: [53.4129, -8.2439],
+    villes: {
+      "Dublin": {
+        coords: [53.3498, -6.2603],
+        activites: [
+          { nom: "Château de Dublin", coords: [53.3429, -6.2673], url: "https://www.dublincastle.ie" },
+          { nom: "Guinness Storehouse", coords: [53.3419, -6.2868], url: "https://www.guinness-storehouse.com" },
+          { nom: "Trinity College & Book de Kells", coords: [53.3438, -6.2546], url: "https://www.tcd.ie" },
+          { nom: "Temple Bar", coords: [53.3459, -6.2653], url: "https://www.ireland.com" },
+        ],
+        hotels: [
+          { nom: "The Shelbourne Dublin", coords: [53.3392, -6.2530], url: "https://www.marriott.com" },
+          { nom: "InterContinental Dublin", coords: [53.3073, -6.2322], url: "https://www.ihg.com" },
+        ]
+      },
+    }
+  },
+
+  // ─────────────────────────────────────────
+  // RESTE DU MONDE (existant)
+  // ─────────────────────────────────────────
+
+  "Japon": {
+    coords: [36.2048, 138.2529],
+    villes: {
+      "Tokyo": {
+        coords: [35.6762, 139.6503],
+        activites: [
+          { nom: "Tokyo Tower", coords: [35.6586, 139.7016], url: "https://www.gotokyo.org" },
+          { nom: "Parc Ueno", coords: [35.7101, 139.8107], url: "https://www.gotokyo.org" },
+          { nom: "Croisement de Shibuya", coords: [35.6302, 139.7404], url: "https://www.gotokyo.org" },
+        ],
+        hotels: [
+          { nom: "The Ritz-Carlton Tokyo", coords: [35.6733, 139.7551], url: "https://www.ritzcarlton.com/tokyo" },
+          { nom: "Mandarin Oriental Tokyo", coords: [35.6605, 139.7292], url: "https://www.mandarinoriental.com/tokyo" },
+          { nom: "Hilton Tokyo", coords: [35.6866, 139.6921], url: "https://www.hilton.com" },
+        ]
+      },
+      "Osaka": {
+        coords: [34.6937, 135.5023],
+        activites: [
+          { nom: "Château d'Osaka", coords: [34.7025, 135.4960], url: "https://www.osakacastle.net" },
+          { nom: "Dotonbori", coords: [34.6701, 135.5259], url: "https://www.japan-guide.com" },
+          { nom: "Universal Studios Japan", coords: [34.6725, 135.4305], url: "https://www.usj.co.jp" },
+        ],
+        hotels: [
+          { nom: "Swissôtel Nankai Osaka", coords: [34.6873, 135.5246], url: "https://www.swissotel.com" },
+          { nom: "InterContinental Osaka", coords: [34.6654, 135.5018], url: "https://www.ihg.com" },
+          { nom: "Hilton Osaka", coords: [34.6988, 135.4933], url: "https://www.hilton.com" },
+        ]
+      },
+      "Kyoto": {
+        coords: [35.0116, 135.7681],
+        activites: [
+          { nom: "Temple Kinkaku-ji", coords: [35.0394, 135.7292], url: "https://www.shokoku-ji.jp" },
+          { nom: "Forêt de bambous d'Arashiyama", coords: [34.9949, 135.7850], url: "https://www.kyoto.travel" },
+          { nom: "Temple Kiyomizu-dera", coords: [35.0151, 135.7819], url: "https://www.kiyomizudera.or.jp" },
+        ],
+        hotels: [
+          { nom: "Four Seasons Kyoto", coords: [35.0117, 135.7720], url: "https://www.fourseasons.com/kyoto" },
+          { nom: "The Ritz-Carlton Kyoto", coords: [35.0094, 135.7680], url: "https://www.ritzcarlton.com/kyoto" },
+          { nom: "Hyatt Regency Kyoto", coords: [35.0210, 135.7556], url: "https://www.hyatt.com" },
+        ]
+      },
+      "Yokohama": {
+        coords: [35.4606, 139.6250],
+        activites: [
+          { nom: "Minato Mirai", coords: [35.4437, 139.6380], url: "https://www.yokohamajapan.com" },
+          { nom: "Chinatown de Yokohama", coords: [35.4551, 139.6312], url: "https://www.yokohamajapan.com" },
+          { nom: "Jardin Sankeien", coords: [35.4663, 139.6229], url: "https://www.yokohamajapan.com" },
+        ],
+        hotels: [
+          { nom: "InterContinental Yokohama", coords: [35.4576, 139.6309], url: "https://www.ihg.com" },
+          { nom: "Hyatt Regency Yokohama", coords: [35.4468, 139.6503], url: "https://www.hyatt.com" },
+          { nom: "Yokohama Royal Park Hotel", coords: [35.4512, 139.6345], url: "https://www.yrph.com" },
+        ]
+      },
+    }
+  },
+
+  "États-Unis": {
+    coords: [37.0902, -95.7129],
+    villes: {
+      "New York": {
+        coords: [40.7128, -74.0060],
+        activites: [
+          { nom: "Times Square", coords: [40.7589, -73.9851], url: "https://www.timessquarenyc.org" },
+          { nom: "Central Park", coords: [40.7812, -73.9740], url: "https://www.centralparknyc.org" },
+          { nom: "Statue de la Liberté", coords: [40.6892, -74.0445], url: "https://www.nps.gov/stli" },
+        ],
+        hotels: [
+          { nom: "The Plaza Hotel", coords: [40.7614, -73.9776], url: "https://www.theplazany.com" },
+          { nom: "Mandarin Oriental New York", coords: [40.7648, -73.9747], url: "https://www.mandarinoriental.com/new-york" },
+          { nom: "Hilton Midtown", coords: [40.7550, -73.9860], url: "https://www.hilton.com" },
+        ]
+      },
+      "Los Angeles": {
+        coords: [34.0522, -118.2437],
+        activites: [
+          { nom: "Hollywood Sign", coords: [34.1015, -118.3406], url: "https://www.discoverlosangeles.com" },
+          { nom: "Santa Monica Pier", coords: [34.0094, -118.4975], url: "https://www.santamonica.com" },
+          { nom: "LACMA", coords: [34.0639, -118.3592], url: "https://www.lacma.org" },
+        ],
+        hotels: [
+          { nom: "Beverly Hills Hotel", coords: [34.0584, -118.4192], url: "https://www.beverlyhillshotel.com" },
+          { nom: "Four Seasons Los Angeles", coords: [34.0677, -118.3988], url: "https://www.fourseasons.com/losangeles" },
+          { nom: "The Westin Bonaventure", coords: [34.0507, -118.2550], url: "https://www.westin.com" },
+        ]
+      },
+      "Chicago": {
+        coords: [41.8781, -87.6298],
+        activites: [
+          { nom: "Millennium Park", coords: [41.8826, -87.6233], url: "https://www.chicago.gov" },
+          { nom: "Art Institute of Chicago", coords: [41.8796, -87.6237], url: "https://www.artic.edu" },
+          { nom: "Wrigley Field", coords: [41.9471, -87.6561], url: "https://www.wrigleyfield.com" },
+        ],
+        hotels: [
+          { nom: "The Langham Chicago", coords: [41.8898, -87.6227], url: "https://www.langhamhotels.com" },
+          { nom: "The Peninsula Chicago", coords: [41.8888, -87.6244], url: "https://www.peninsula.com/chicago" },
+          { nom: "Hilton Chicago", coords: [41.8849, -87.6321], url: "https://www.hilton.com" },
+        ]
+      },
+      "San Francisco": {
+        coords: [37.7749, -122.4194],
+        activites: [
+          { nom: "Golden Gate Bridge", coords: [37.8087, -122.4098], url: "https://www.goldengatebridge.org" },
+          { nom: "Alcatraz Island", coords: [37.8267, -122.4230], url: "https://www.nps.gov/alca" },
+          { nom: "Golden Gate Park", coords: [37.7694, -122.4862], url: "https://www.sfrecpark.org" },
+        ],
+        hotels: [
+          { nom: "Fairmont San Francisco", coords: [37.7937, -122.4109], url: "https://www.fairmont.com/san-francisco" },
+          { nom: "The Ritz-Carlton San Francisco", coords: [37.7880, -122.4086], url: "https://www.ritzcarlton.com/san-francisco" },
+          { nom: "Hilton San Francisco", coords: [37.7864, -122.4133], url: "https://www.hilton.com" },
+        ]
+      },
+    }
+  },
+
+  "Brésil": {
+    coords: [-14.2350, -51.9253],
+    villes: {
+      "Rio de Janeiro": {
+        coords: [-22.9068, -43.1729],
+        activites: [
+          { nom: "Christ Rédempteur", coords: [-22.9519, -43.2105], url: "https://www.visitrio.com" },
+          { nom: "Plage de Copacabana", coords: [-22.9709, -43.1822], url: "https://www.visitrio.com" },
+          { nom: "Pain de Sucre", coords: [-22.9489, -43.1534], url: "https://www.visitrio.com" },
+        ],
+        hotels: [
+          { nom: "Copacabana Palace", coords: [-22.9707, -43.1822], url: "https://www.belmond.com" },
+          { nom: "Hilton Rio de Janeiro", coords: [-22.9660, -43.1740], url: "https://www.hilton.com" },
+          { nom: "Fasano Rio de Janeiro", coords: [-22.9740, -43.1900], url: "https://www.fasano.com.br" },
+        ]
+      },
+      "São Paulo": {
+        coords: [-23.5505, -46.6333],
+        activites: [
+          { nom: "Avenida Paulista", coords: [-23.5632, -46.6541], url: "https://www.cidadedesaopaulo.com" },
+          { nom: "MASP", coords: [-23.5614, -46.6559], url: "https://www.masp.art.br" },
+          { nom: "Parc Ibirapuera", coords: [-23.5873, -46.6573], url: "https://parqueibirapuera.org" },
+        ],
+        hotels: [
+          { nom: "Tivoli Mofarrej São Paulo", coords: [-23.5650, -46.6524], url: "https://www.tivolihotels.com" },
+          { nom: "Palácio Tangará", coords: [-23.5535, -46.6667], url: "https://www.palaciotangara.com" },
+          { nom: "Hilton São Paulo Morumbi", coords: [-23.5703, -46.6450], url: "https://www.hilton.com" },
+        ]
+      },
+      "Salvador": {
+        coords: [-12.9714, -38.5014],
+        activites: [
+          { nom: "Pelourinho", coords: [-12.9740, -38.5124], url: "https://www.bahia-turismo.com" },
+          { nom: "Elevador Lacerda", coords: [-12.9600, -38.5100], url: "https://www.bahia-turismo.com" },
+          { nom: "Plage de Porto da Barra", coords: [-12.9711, -38.5010], url: "https://www.bahia-turismo.com" },
+        ],
+        hotels: [
+          { nom: "Fasano Salvador", coords: [-12.9600, -38.5100], url: "https://www.fasano.com.br" },
+          { nom: "Wish Hotel da Bahia", coords: [-12.9750, -38.5150], url: "https://www.wishhotels.com.br" },
+          { nom: "Mercure Salvador Rio Vermelho", coords: [-12.9620, -38.5050], url: "https://www.mercure.com" },
+        ]
+      },
+    }
+  },
+
+  "Australie": {
+    coords: [-25.2744, 133.7751],
+    villes: {
+      "Sydney": {
+        coords: [-33.8688, 151.2093],
+        activites: [
+          { nom: "Opéra de Sydney", coords: [-33.8568, 151.2153], url: "https://www.sydneyoperahouse.com" },
+          { nom: "Royal Botanic Garden", coords: [-33.8642, 151.2166], url: "https://www.rbgsyd.nsw.gov.au" },
+          { nom: "The Rocks", coords: [-33.8599, 151.2083], url: "https://www.therocks.com" },
+        ],
+        hotels: [
+          { nom: "Park Hyatt Sydney", coords: [-33.8582, 151.2122], url: "https://www.parkhyatt.com" },
+          { nom: "Shangri-La Sydney", coords: [-33.8643, 151.2066], url: "https://www.shangri-la.com/sydney" },
+          { nom: "Hilton Sydney", coords: [-33.8715, 151.1975], url: "https://www.hilton.com" },
+        ]
+      },
+      "Melbourne": {
+        coords: [-37.8136, 144.9631],
+        activites: [
+          { nom: "Federation Square", coords: [-37.8180, 144.9680], url: "https://www.fedsquare.com" },
+          { nom: "National Gallery of Victoria", coords: [-37.8225, 144.9691], url: "https://www.ngv.vic.gov.au" },
+          { nom: "Queen Victoria Market", coords: [-37.8071, 144.9559], url: "https://www.qvm.com.au" },
+        ],
+        hotels: [
+          { nom: "Crown Towers Melbourne", coords: [-37.8211, 144.9562], url: "https://www.crownmelbourne.com.au" },
+          { nom: "Park Hyatt Melbourne", coords: [-37.8130, 144.9753], url: "https://www.parkhyatt.com" },
+          { nom: "Sofitel Melbourne on Collins", coords: [-37.8160, 144.9680], url: "https://www.sofitel.com" },
+        ]
+      },
+      "Brisbane": {
+        coords: [-27.4705, 153.0260],
+        activites: [
+          { nom: "South Bank", coords: [-27.4755, 153.0127], url: "https://www.visitbrisbane.com.au" },
+          { nom: "Brisbane Botanic Gardens", coords: [-27.4803, 153.0234], url: "https://www.brisbane.qld.gov.au" },
+          { nom: "Lone Pine Koala Sanctuary", coords: [-27.5330, 152.9747], url: "https://www.koala.net" },
+        ],
+        hotels: [
+          { nom: "Sofitel Brisbane", coords: [-27.4720, 153.0235], url: "https://www.sofitel.com" },
+          { nom: "Hilton Brisbane", coords: [-27.4689, 153.0206], url: "https://www.hilton.com" },
+          { nom: "Stamford Plaza Brisbane", coords: [-27.4710, 153.0290], url: "https://www.stamford.com.au" },
+        ]
+      },
+    }
+  },
+
+};
+
+// ============================================================
+// GÉNÉRATION AUTOMATIQUE DU DROPDOWN HTML
+// ============================================================
+
+function slugify(str) {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function buildDropdown() {
+  const dropdown = document.getElementById('main-dropdown');
+
+  // ── Section PAYS ──
+  const secPays = buildSection('pays', 'Pays');
+  const countriesPays = document.createElement('div');
+  countriesPays.className = 'countries';
+  countriesPays.id = 'pays-countries';
+
+  for (const [pays, data] of Object.entries(DATA)) {
+    const paysId = slugify(pays);
+    const countryEl = document.createElement('div');
+    countryEl.className = 'country';
+    countryEl.dataset.id = paysId;
+    countryEl.dataset.coords = data.coords.join(',');
+    countryEl.textContent = pays;
+    countriesPays.appendChild(countryEl);
+
+    const citiesEl = document.createElement('div');
+    citiesEl.className = 'cities';
+    citiesEl.id = `${paysId}-cities`;
+
+    for (const [ville, vData] of Object.entries(data.villes)) {
+      const cityEl = document.createElement('div');
+      cityEl.className = 'city';
+      cityEl.dataset.coords = vData.coords.join(',');
+      cityEl.textContent = ville;
+      citiesEl.appendChild(cityEl);
+    }
+    countriesPays.appendChild(citiesEl);
+  }
+  dropdown.appendChild(secPays);
+  dropdown.appendChild(countriesPays);
+
+  // ── Section ACTIVITÉS ──
+  const secAct = buildSection('activites', 'Activités');
+  const countriesAct = document.createElement('div');
+  countriesAct.className = 'countries';
+  countriesAct.id = 'activites-countries';
+
+  for (const [pays, data] of Object.entries(DATA)) {
+    const paysId = slugify(pays);
+    const countryEl = document.createElement('div');
+    countryEl.className = 'country';
+    countryEl.dataset.id = `${paysId}-activites`;
+    countryEl.dataset.coords = data.coords.join(',');
+    countryEl.textContent = pays;
+    countriesAct.appendChild(countryEl);
+
+    const citiesEl = document.createElement('div');
+    citiesEl.className = 'cities';
+    citiesEl.id = `${paysId}-activites-cities`;
+
+    for (const [ville, vData] of Object.entries(data.villes)) {
+      const villeId = slugify(pays + '-' + ville);
+      const cityEl = document.createElement('div');
+      cityEl.className = 'city';
+      cityEl.dataset.id = `${villeId}-activites`;
+      cityEl.dataset.coords = vData.coords.join(',');
+      cityEl.textContent = ville;
+      citiesEl.appendChild(cityEl);
+
+      const itemsEl = document.createElement('div');
+      itemsEl.className = 'items';
+      itemsEl.id = `${villeId}-activites-items`;
+
+      for (const act of vData.activites) {
+        itemsEl.appendChild(buildItem(act, 'activity'));
+      }
+      citiesEl.appendChild(itemsEl);
+    }
+    countriesAct.appendChild(citiesEl);
+  }
+  dropdown.appendChild(secAct);
+  dropdown.appendChild(countriesAct);
+
+  // ── Section HÔTELS ──
+  const secHot = buildSection('hotels', 'Hôtels');
+  const countriesHot = document.createElement('div');
+  countriesHot.className = 'countries';
+  countriesHot.id = 'hotels-countries';
+
+  for (const [pays, data] of Object.entries(DATA)) {
+    const paysId = slugify(pays);
+    const countryEl = document.createElement('div');
+    countryEl.className = 'country';
+    countryEl.dataset.id = `${paysId}-hotels`;
+    countryEl.dataset.coords = data.coords.join(',');
+    countryEl.textContent = pays;
+    countriesHot.appendChild(countryEl);
+
+    const citiesEl = document.createElement('div');
+    citiesEl.className = 'cities';
+    citiesEl.id = `${paysId}-hotels-cities`;
+
+    for (const [ville, vData] of Object.entries(data.villes)) {
+      const villeId = slugify(pays + '-' + ville);
+      const cityEl = document.createElement('div');
+      cityEl.className = 'city';
+      cityEl.dataset.id = `${villeId}-hotels`;
+      cityEl.dataset.coords = vData.coords.join(',');
+      cityEl.textContent = ville;
+      citiesEl.appendChild(cityEl);
+
+      const itemsEl = document.createElement('div');
+      itemsEl.className = 'items';
+      itemsEl.id = `${villeId}-hotels-items`;
+
+      for (const hotel of vData.hotels) {
+        itemsEl.appendChild(buildItem(hotel, 'hotel'));
+      }
+      citiesEl.appendChild(itemsEl);
+    }
+    countriesHot.appendChild(citiesEl);
+  }
+  dropdown.appendChild(secHot);
+  dropdown.appendChild(countriesHot);
+}
+
+function buildSection(id, label) {
+  const el = document.createElement('div');
+  el.className = 'section';
+  el.dataset.id = id;
+  el.textContent = label;
+  return el;
+}
+
+function buildItem(data, type) {
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.dataset.coords = data.coords.join(',');
+  el.dataset.type = type;
+  el.dataset.url = data.url;
+  el.textContent = data.nom;
+  return el;
+}
+
+// Construire le dropdown au chargement
+buildDropdown();
+
+// ============================================================
+// CARTE LEAFLET + MARKER CLUSTERS
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  const map = L.map('map', {
+    minZoom: 2, maxZoom: 18,
+    maxBounds: [[-90, -180], [90, 180]],
+    maxBoundsViscosity: 1.0
+  }).setView([48.8566, 2.3522], 5);
+  window._map = map;
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+
+  // ── Icônes personnalisées ──
+  const cityIcon = L.divIcon({
+    className: 'city-marker',
+    html: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ff6a00"/><circle cx="12" cy="9" r="2" fill="#ff99cc"/></svg>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
+  });
+  const activityIcon = L.divIcon({
+    className: 'activity-marker',
+    html: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#00b7eb"/><circle cx="12" cy="9" r="2" fill="#80d8ff"/></svg>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
+  });
+  window._actIcon = activityIcon;
+  const hotelIcon = L.divIcon({
+    className: 'hotel-marker',
+    html: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#8b008b"/><circle cx="12" cy="9" r="2" fill="#c71585"/></svg>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32]
+  });
+
+  // ── Cluster group avec couleurs personnalisées ──
+  const clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      let size, color, textColor;
+      if (count < 10) {
+        size = 36; color = '#6dbf67'; textColor = '#1a4d17';
+      } else if (count < 20) {
+        size = 44; color = '#f0c040'; textColor = '#5a3d00';
+      } else {
+        size = 52; color = '#f07830'; textColor = '#5a1e00';
+      }
+      return L.divIcon({
+        html: `<div style="
+          width:${size}px; height:${size}px;
+          background:${color};
+          border-radius:50%;
+          display:flex; align-items:center; justify-content:center;
+          font-family:'Outfit',sans-serif;
+          font-size:${size > 40 ? 15 : 13}px;
+          font-weight:700;
+          color:${textColor};
+          border: 3px solid rgba(255,255,255,0.85);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        ">${count}</div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+    }
+  });
+
+  // ── Pré-charger TOUS les marqueurs activités + hôtels dans le cluster ──
+  for (const [pays, pData] of Object.entries(DATA)) {
+    for (const [ville, vData] of Object.entries(pData.villes)) {
+      // Activités
+      for (const act of vData.activites) {
+        const marker = L.marker(act.coords, { icon: activityIcon });
+        marker.bindPopup(`
+          <div>
+            <strong>${act.nom}</strong><br>
+            🎯 Activité · ${ville}, ${pays}<br>
+            <a href="${act.url}" target="_blank">Visiter le site</a>
+          </div>`);
+        clusterGroup.addLayer(marker);
+      }
+      // Hôtels
+      for (const hotel of vData.hotels) {
+        const marker = L.marker(hotel.coords, { icon: hotelIcon });
+        marker.bindPopup(`
+          <div>
+            <strong>${hotel.nom}</strong><br>
+            🏨 Hôtel · ${ville}, ${pays}<br>
+            <a href="${hotel.url}" target="_blank">Visiter le site</a>
+          </div>`);
+        clusterGroup.addLayer(marker);
+      }
+    }
+  }
+
+  map.addLayer(clusterGroup);
+
+  // ── Marqueur de sélection (dropdown) ──
+  let currentMarker = null;
+
+  const dropdownButton = document.querySelector('.dropdown-button');
+  const dropdownContent = document.querySelector('.dropdown-content');
+
+  dropdownButton.addEventListener('click', () => {
+    const isExpanded = dropdownButton.getAttribute('aria-expanded') === 'true';
+    dropdownButton.setAttribute('aria-expanded', !isExpanded);
+    dropdownContent.style.display = isExpanded ? 'none' : 'block';
+  });
+
+  // Sections
+  document.querySelectorAll('.section').forEach(section => {
+    section.addEventListener('click', () => {
+      const sectionId = section.dataset.id;
+      const countriesEl = document.getElementById(`${sectionId}-countries`);
+      const isShown = countriesEl.classList.contains('show');
+      document.querySelectorAll('.countries, .cities, .items').forEach(el => el.classList.remove('show'));
+      if (!isShown) countriesEl.classList.add('show');
+    });
+  });
+
+  // Pays
+  document.querySelectorAll('.country').forEach(country => {
+    country.addEventListener('click', () => {
+      const countryId = country.dataset.id;
+      const citiesEl = document.getElementById(`${countryId}-cities`);
+      const isShown = citiesEl && citiesEl.classList.contains('show');
+      document.querySelectorAll('.cities, .items').forEach(el => el.classList.remove('show'));
+      if (citiesEl && !isShown) citiesEl.classList.add('show');
+      const coords = country.dataset.coords.split(',').map(Number);
+      map.setView(coords, 5);
+      if (currentMarker) map.removeLayer(currentMarker);
+      currentMarker = L.marker(coords, { icon: cityIcon }).addTo(map)
+        .bindPopup(`<strong>${country.textContent}</strong>`).openPopup();
+    });
+  });
+
+  // Villes
+  document.querySelectorAll('.city').forEach(city => {
+    city.addEventListener('click', () => {
+      const coords = city.dataset.coords.split(',').map(Number);
+      const cityId = city.dataset.id;
+      const itemsEl = cityId ? document.getElementById(`${cityId}-items`) : null;
+      const isShown = itemsEl && itemsEl.classList.contains('show');
+      document.querySelectorAll('.items').forEach(el => el.classList.remove('show'));
+      if (itemsEl && !isShown) itemsEl.classList.add('show');
+      map.setView(coords, 10);
+      if (currentMarker) map.removeLayer(currentMarker);
+      currentMarker = L.marker(coords, { icon: cityIcon }).addTo(map)
+        .bindPopup(`<strong>${city.textContent}</strong>`).openPopup();
+    });
+  });
+
+  // Items (dropdown) → zoom + popup directe
+  document.querySelectorAll('.item').forEach(item => {
+    item.addEventListener('click', () => {
+      const coords = item.dataset.coords.split(',').map(Number);
+      const type = item.dataset.type;
+      const url = item.dataset.url || '#';
+      const icon = type === 'activity' ? activityIcon : hotelIcon;
+      map.setView(coords, 15);
+      if (currentMarker) map.removeLayer(currentMarker);
+      currentMarker = L.marker(coords, { icon }).addTo(map)
+        .bindPopup(`<div><strong>${item.textContent.trim()}</strong><br>${type === 'activity' ? '🎯 Activité' : '🏨 Hôtel'}<br><a href="${url}" target="_blank">Visiter le site</a></div>`)
+        .openPopup();
+    });
+  });
+
+  // Fermer au clic extérieur
+  document.addEventListener('click', (event) => {
+    if (!dropdownButton.contains(event.target) && !dropdownContent.contains(event.target)) {
+      dropdownContent.style.display = 'none';
+      dropdownButton.setAttribute('aria-expanded', 'false');
+      document.querySelectorAll('.countries, .cities, .items').forEach(el => el.classList.remove('show'));
+    }
+  });
+});
+
+// ============================================================
+// SYSTÈME DE FAVORIS
+// ============================================================
+
+let favoris = JSON.parse(localStorage.getItem('nomadia-favoris') || '[]');
+
+function sauvegarderFavoris() { localStorage.setItem('nomadia-favoris', JSON.stringify(favoris)); }
+function mettreAJourBadge() { document.getElementById('favoris-badge').textContent = favoris.length; }
+function estEnFavori(nom) { return favoris.some(f => f.nom === nom); }
+
+function renderFavoris() {
+  const list = document.getElementById('favoris-list');
+  const vide = document.getElementById('favoris-vide');
+  list.querySelectorAll('.favori-item').forEach(i => i.remove());
+  if (favoris.length === 0) {
+    vide.style.display = 'block';
+  } else {
+    vide.style.display = 'none';
+    favoris.forEach((fav, index) => {
+      const el = document.createElement('div');
+      el.className = 'favori-item';
+      el.innerHTML = `
+        <div class="favori-info">
+          <div class="favori-nom">${fav.nom}</div>
+          <div class="favori-type">${fav.type === 'activity' ? '🎯 Activité' : '🏨 Hôtel'}</div>
+        </div>
+        <div class="favori-actions">
+          <a class="favori-voir" href="${fav.url}" target="_blank">Voir</a>
+          <button class="favori-suppr" data-index="${index}">✕</button>
+        </div>`;
+      list.appendChild(el);
+    });
+    list.querySelectorAll('.favori-suppr').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        favoris.splice(parseInt(e.target.dataset.index), 1);
+        sauvegarderFavoris(); mettreAJourBadge(); renderFavoris(); mettreAJourBoutonsFavoris();
+      });
+    });
+  }
+}
+
+function mettreAJourBoutonsFavoris() {
+  document.querySelectorAll('.item-favori-btn').forEach(btn => {
+    const nom = btn.dataset.nom;
+    btn.classList.toggle('actif', estEnFavori(nom));
+    btn.textContent = estEnFavori(nom) ? '❤' : '🤍';
+  });
+}
+
+// Boutons ❤ sur chaque item
+document.querySelectorAll('.item').forEach(item => {
+  const nom = item.textContent.trim();
+  const type = item.dataset.type;
+  const url = item.dataset.url || '#';
+  const coords = item.dataset.coords;
+  const btn = document.createElement('button');
+  btn.className = 'item-favori-btn';
+  btn.dataset.nom = nom;
+  btn.textContent = estEnFavori(nom) ? '❤' : '🤍';
+  btn.title = 'Ajouter aux favoris';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (estEnFavori(nom)) {
+      favoris = favoris.filter(f => f.nom !== nom);
+    } else {
+      favoris.push({ nom, type, url, coords });
+    }
+    sauvegarderFavoris(); mettreAJourBadge(); renderFavoris(); mettreAJourBoutonsFavoris();
+  });
+  item.appendChild(btn);
+});
+
+document.getElementById('favoris-btn').addEventListener('click', () => {
+  document.getElementById('favoris-panel').classList.toggle('open');
+});
+document.getElementById('close-favoris').addEventListener('click', () => {
+  document.getElementById('favoris-panel').classList.remove('open');
+});
+document.getElementById('vider-favoris').addEventListener('click', () => {
+  if (confirm('Vider tous les favoris ?')) {
+    favoris = [];
+    sauvegarderFavoris(); mettreAJourBadge(); renderFavoris(); mettreAJourBoutonsFavoris();
+  }
+});
+
+mettreAJourBadge();
+renderFavoris();
+
+
+
+// ============================================================
+// SUPABASE AUTH + PRO — chargement dynamique après DOM ready
+// ============================================================
+(function initSupabase() {
+  const SURL = 'https://tgayelchkhdioudodxul.supabase.co';
+  const SKEY = 'sb_publishable_Ef6DJ4aYuJmCUGW_e_6MDQ_Zy3EMIun';
+
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+  s.onload = function() {
+    var sb = supabase.createClient(SURL, SKEY);
+    window._sb = sb;
+    var _user = null, _isPro = false, _mode = 'login';
+
+    // TOAST
+    window.gbToast = function(msg, color) {
+      var t = document.getElementById('gb-toast');
+      t.textContent = msg; t.style.color = color || '#fff';
+      t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); }, 3200);
+    };
+
+    // OPEN/CLOSE
+    window.gbOpenAuth = function() {
+      if (_user) { gbShowMenu(); return; }
+      document.getElementById('auth-overlay').classList.add('open');
+      setTimeout(function(){ document.getElementById('af-email').focus(); }, 300);
+    };
+    window.gbCloseAuth = function() {
+      document.getElementById('auth-overlay').classList.remove('open');
+      var m = document.getElementById('auth-msg');
+      m.textContent = ''; m.className = '';
+    };
+    window.gbCloseOverlay = function(e) {
+      if (e.target === document.getElementById('auth-overlay')) gbCloseAuth();
+    };
+
+    // TABS
+    window.gbTab = function(mode) {
+      _mode = mode;
+      document.getElementById('tab-in').classList.toggle('active', mode === 'login');
+      document.getElementById('tab-up').classList.toggle('active', mode === 'signup');
+      document.getElementById('af-btn').textContent = mode === 'login' ? 'Se connecter' : 'Créer un compte';
+      document.getElementById('auth-msg').textContent = '';
+      document.getElementById('auth-msg').className = '';
+      var tagline = document.getElementById('auth-tagline');
+      if (tagline) tagline.textContent = mode === 'login' ? 'Connectez-vous à votre compte' : 'Créez votre compte gratuitement';
+      var sw = document.getElementById('auth-switch');
+      if (sw) sw.innerHTML = mode === 'login'
+        ? 'Pas encore de compte ? <span onclick="gbTab(\'signup\')">S\'inscrire gratuitement</span>'
+        : 'Déjà un compte ? <span onclick="gbTab(\'login\')">Se connecter</span>';
+      var forgot = document.getElementById('auth-forgot');
+      if (forgot) forgot.style.display = mode === 'login' ? 'block' : 'none';
+    };
+
+    // TOGGLE PASSWORD VISIBILITY
+    window.gbTogglePass = function() {
+      var f = document.getElementById('af-pass');
+      var icon = document.getElementById('eye-icon');
+      if (f.type === 'password') {
+        f.type = 'text';
+        icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+      } else {
+        f.type = 'password';
+        icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+      }
+    };
+
+    // FORGOT PASSWORD
+    window.gbForgot = async function() {
+      var email = document.getElementById('af-email').value.trim();
+      var msg = document.getElementById('auth-msg');
+      if (!email) {
+        msg.className = 'err';
+        msg.textContent = 'Entre ton email ci-dessus pour recevoir le lien.';
+        return;
+      }
+      msg.className = ''; msg.textContent = '⏳ Envoi…';
+      var r = await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://globaya.space/Nomadia.html' });
+      if (r.error) { msg.className = 'err'; msg.textContent = r.error.message; }
+      else { msg.className = 'ok'; msg.textContent = '✅ Lien envoyé ! Vérifie ta boîte mail.'; }
+    };
+
+    // AUTH
+    window.gbDoAuth = async function() {
+      var email = document.getElementById('af-email').value.trim();
+      var pass  = document.getElementById('af-pass').value;
+      var msg   = document.getElementById('auth-msg');
+      var btn   = document.getElementById('af-btn');
+      msg.className = ''; msg.textContent = '';
+
+      if (!email || !pass) { msg.className='err'; msg.textContent='Remplis tous les champs.'; return; }
+      if (pass.length < 6) { msg.className='err'; msg.textContent='Mot de passe : 6 caractères minimum.'; return; }
+
+      btn.disabled = true; btn.textContent = '⏳ Chargement…';
+
+      try {
+        if (_mode === 'signup') {
+          var r = await sb.auth.signUp({ email: email, password: pass });
+          if (r.error) throw r.error;
+          if (!r.data.user || !r.data.session) {
+            msg.className = 'ok';
+            msg.textContent = '✅ Compte créé ! Vérifiez votre email pour confirmer.';
+          } else {
+            gbCloseAuth();
+            gbToast('✦ Compte créé et connecté !', '#6bffa8');
+          }
+        } else {
+          var r2 = await sb.auth.signInWithPassword({ email: email, password: pass });
+          if (r2.error) throw r2.error;
+          gbCloseAuth();
+          gbToast('✦ Connecté !', '#6bffa8');
+        }
+      } catch(e) {
+        msg.className = 'err';
+        var map = {
+          'Invalid login credentials': 'Email ou mot de passe incorrect.',
+          'Email not confirmed': 'Confirmez votre email avant de vous connecter.',
+          'User already registered': 'Email déjà utilisé — connectez-vous.',
+        };
+        msg.textContent = map[e.message] || e.message;
+      }
+      btn.disabled = false;
+      btn.textContent = _mode === 'login' ? 'Se connecter' : 'Créer mon compte';
+    };
+
+    // Enter key
+    ['af-email','af-pass'].forEach(function(id) {
+      document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Enter') gbDoAuth(); });
+    });
+
+    // USER MENU
+    window.gbShowMenu = function() {
+      var m = document.getElementById('user-menu');
+      if (m.classList.contains('show')) { m.classList.remove('show'); return; }
+      var btn = document.getElementById('auth-btn');
+      var r = btn.getBoundingClientRect();
+      m.style.top  = (r.bottom + 10) + 'px';
+      m.style.right = (window.innerWidth - r.right) + 'px';
+      m.innerHTML =
+        '<div class="umenu-email">' + _user.email + '</div>' +
+        '<div class="umenu-item" onclick="window.location.href=\'profil.html\'">👤 Mon Profil</div>' +
+        (_isPro
+          ? '<div class="umenu-item umenu-pro">✦ Abonné Pro actif</div>'
+          : '<div class="umenu-item umenu-upgrade" onclick="window.location.href=\'globaya-premium.html\'">⭐ Passer à Pro</div>') +
+        '<div class="umenu-item umenu-out" onclick="gbSignOut()">Se déconnecter</div>';
+      m.classList.add('show');
+      setTimeout(function(){
+        document.addEventListener('click', function handler(){
+          m.classList.remove('show');
+          document.removeEventListener('click', handler);
+        });
+      }, 50);
+    };
+
+    window.gbSignOut = async function() {
+      await sb.auth.signOut();
+      gbToast('Déconnecté.', '#aaa');
+    };
+
+    // PRO CHECK
+    async function checkPro(uid) {
+      try {
+        var r = await sb.from('subscribers').select('status').eq('id', uid).single();
+        _isPro = !!(r.data && r.data.status === 'active');
+      } catch(e) { _isPro = false; }
+      window._gbIsPro = _isPro;
+      updateBtn();
+      injectProSections(); // refresh with correct lock/unlock state
+    }
+
+    function updateBtn() {
+      var btn = document.getElementById('auth-btn');
+      if (_user) {
+        btn.textContent = _isPro ? '✦ Pro ▾' : '👤 Compte ▾';
+        btn.className = 'logged';
+      } else {
+        btn.textContent = '✦ Pro';
+        btn.className = '';
+      }
+    }
+
+    // ── VRAIS SPOTS PRO ──
+    var PRO_SPOTS = [
+      { pays:'France 🇫🇷',     nom:'Gorges du Verdon — rive nord secrète',     coords:[43.7500,6.3400],   desc:'Sentier peu fréquenté, eau turquoise, vue plongeante.' },
+      { pays:'France 🇫🇷',     nom:'Phare de la Jument (Ouessant)',             coords:[48.4470,-5.1380],  desc:'Spot photo légendaire lors des tempêtes atlantiques.' },
+      { pays:'France 🇫🇷',     nom:'Cirque de Gavarnie — lever de soleil',      coords:[42.7344,0.0089],   desc:'Arriver avant 6h pour la lumière dorée sans foule.' },
+      { pays:'France 🇫🇷',     nom:'Village troglodyte de Rochemenier',         coords:[47.2833,-0.3167],  desc:'Village souterrain médiéval quasi inconnu.' },
+      { pays:'Italie 🇮🇹',     nom:'Scala dei Turchi — Sicile',                 coords:[37.2892,13.4781],  desc:'Falaises blanches en escalier, tôt le matin.' },
+      { pays:'Italie 🇮🇹',     nom:'Lago di Braies à l\'aube',                 coords:[46.6944,12.0853],  desc:'Arriver avant 7h pour éviter 3000 touristes.' },
+      { pays:'Italie 🇮🇹',     nom:'Civita di Bagnoregio',                      coords:[42.6281,12.1133],  desc:'La cité mourante, magique en soirée.' },
+      { pays:'Espagne 🇪🇸',    nom:'Bardenas Reales — désert espagnol',         coords:[42.2000,-1.5500],  desc:'Désert semi-aride unique en Europe.' },
+      { pays:'Espagne 🇪🇸',    nom:'Ronda — Pont Neuf de nuit',                 coords:[36.7456,-5.1611],  desc:'Illuminé la nuit, quasi désert après 22h.' },
+      { pays:'Portugal 🇵🇹',   nom:'Praia do Camilo — Lagos',                   coords:[37.0817,-8.6736],  desc:'Crique cachée accessible par escalier.' },
+      { pays:'Portugal 🇵🇹',   nom:'Monsanto — Village rocher',                 coords:[40.0333,-7.1167],  desc:'Maisons construites entre d\'immenses rochers.' },
+      { pays:'Grèce 🇬🇷',      nom:'Météores — vue panoramique Adrakhos',       coords:[39.7217,21.6306],  desc:'Personne avant 7h, vue imprenable.' },
+      { pays:'Grèce 🇬🇷',      nom:'Navagio Beach hors saison',                 coords:[37.8611,20.6244],  desc:'Accessible en bateau privé, octobre = seul sur la plage.' },
+      { pays:'Japon 🇯🇵',      nom:'Arashiyama bambous — 5h30 du matin',        coords:[35.0094,135.6722], desc:'Avant les cars de touristes, lumière filtrée magique.' },
+      { pays:'Japon 🇯🇵',      nom:'Koyasan — Okunoin de nuit',                 coords:[34.2136,135.5856], desc:'Cimetière bouddhiste illuminé de lanternes.' },
+      { pays:'Japon 🇯🇵',      nom:'Lac Mashu dans la brume — Hokkaido',        coords:[43.5736,144.5269], desc:'Lac de caldera entouré de brume matinale bleue.' },
+      { pays:'Vietnam 🇻🇳',    nom:'Baie de Lan Ha — alternative Ha Long',      coords:[20.7500,107.0833], desc:'Même beauté que Ha Long, 90% moins de touristes.' },
+      { pays:'Vietnam 🇻🇳',    nom:'Mù Cang Chải — rizières en terrasses',      coords:[21.8031,104.0872], desc:'Septembre-octobre: rizières en or.' },
+      { pays:'Thaïlande 🇹🇭',  nom:'Koh Kood — île préservée',                  coords:[11.6333,102.5500], desc:'L\'île la plus sauvage du golfe de Thaïlande.' },
+      { pays:'Indonésie 🇮🇩',  nom:'Kelimutu — lacs colorés Flores',            coords:[-8.7717,121.8217], desc:'Trois lacs volcaniques de couleurs différentes.' },
+      { pays:'Indonésie 🇮🇩',  nom:'Nusa Penida — Broken Beach',                coords:[-8.7274,115.5431], desc:'Arche naturelle et piscine turquoise secrète.' },
+      { pays:'Maroc 🇲🇦',      nom:'Aït Benhaddou — coucher de soleil',         coords:[31.0472,-7.1322],  desc:'Ksar millénaire, lumière orange parfaite à 18h.' },
+      { pays:'Maroc 🇲🇦',      nom:'Merzouga — Erg Chebbi à l\'aube',           coords:[31.0981,-3.9794],  desc:'Dunes de 150m, silence total avant le lever.' },
+      { pays:'Maroc 🇲🇦',      nom:'Chefchaouen — ruelles bleues à 6h',         coords:[35.1688,-5.2636],  desc:'Avant les groupes, lumière bleue et rose, vide total.' },
+      { pays:'Madagascar 🇲🇬', nom:'Allée des Baobabs — coucher de soleil',     coords:[-20.2500,44.4167], desc:'Lumière dorée sur les baobabs géants.' },
+      { pays:'Éthiopie 🇪🇹',   nom:'Danakil — lac de lave Erta Ale',            coords:[14.2417,40.3000],  desc:'Paysage lunaire de soufre, point le plus chaud du globe.' },
+      { pays:'Namibie 🇳🇦',    nom:'Sossusvlei — Dune 45 au lever',             coords:[-24.7275,15.9397], desc:'Ombre et lumière parfaites à 6h, désert rouge ocre.' },
+      { pays:'Namibie 🇳🇦',    nom:'Deadvlei — arbres morts centenaires',       coords:[-24.7589,15.2944], desc:'Arbres morts depuis 900 ans sur dunes oranges.' },
+    ];
+
+    var PRO_CARTES = [
+      { nom:'🚐 Vanlife Europe',    desc:'Aires autorisées, eau, bivouacs légaux', spots:[
+        { nom:'Aire Vanlife — Cap Formentor (Majorque)', coords:[39.9628,3.2131],   desc:'Aire sauvage face à la mer, eau à 2km.' },
+        { nom:'Aire Vanlife — Lac d\'Annecy (Doussard)',coords:[45.7833,6.2167],   desc:'Bord de lac, bivouac légal, baignade.' },
+        { nom:'Aire Vanlife — Bardenas Reales',         coords:[42.2000,-1.5500],  desc:'Nuit dans le désert espagnol.' },
+        { nom:'Aire Vanlife — Côte Cantabrique',        coords:[43.3713,-3.9960],  desc:'Falaises vertes face à l\'Atlantique.' },
+      ]},
+      { nom:'🥾 Trek Léger',        desc:'Sentiers peu fréquentés, refuges', spots:[
+        { nom:'GR20 — Refuge Ciottulu (Corse)',         coords:[42.3833,8.9167],   desc:'Nuit sous les étoiles corses.' },
+        { nom:'Tour Mont Blanc — Refuge Bonatti',       coords:[45.8456,7.0219],   desc:'Vue sur les Grandes Jorasses.' },
+        { nom:'Cinque Terre — Sentiero Rosso',          coords:[44.1200,9.7100],   desc:'Sentier en hauteur peu connu.' },
+        { nom:'Kumano Kodo — Nakahechi (Japon)',        coords:[33.8639,135.7719], desc:'Pèlerinage bouddhiste, forêts millénaires.' },
+      ]},
+      { nom:'🍜 Foodie Authentique', desc:'Marchés locaux, cantines secrètes', spots:[
+        { nom:'Marché Porta Palazzo — Turin',           coords:[45.0758,7.6869],   desc:'Plus grand marché en plein air d\'Europe.' },
+        { nom:'Tsukiji Outer Market — Tokyo 5h',        coords:[35.6654,139.7707], desc:'Sushis du matin, poisson ultra frais.' },
+        { nom:'Souk Jemaa el-Fna de nuit',              coords:[31.6258,-7.9892],  desc:'Cantines improvisées à la tombée de nuit.' },
+        { nom:'Marché Ben Thanh à 6h — Ho Chi Minh',   coords:[10.7725,106.6980], desc:'Pho authentique, prix locaux.' },
+      ]},
+      { nom:'🌱 Éco-Responsable',   desc:'Hébergements durables, zéro déchet', spots:[
+        { nom:'Ecolodge Moulin Sainte-Anne — Ardèche',  coords:[44.6333,4.3667],   desc:'100% solaire, permaculture, rivière.' },
+        { nom:'Eco-camp Sossusvlei — Namibie',          coords:[-24.7275,15.9397], desc:'Camp étoiles, énergie solaire.' },
+        { nom:'Finca bio — Andalousie',                 coords:[36.7213,-4.4217],  desc:'Ferme biologique avec hébergement.' },
+      ]},
+      { nom:'📷 Photo & Cinéma',    desc:'Décors de films, angles parfaits', spots:[
+        { nom:'Matera — Belvedere (Italie)',             coords:[40.6663,16.6043],  desc:'Décor James Bond, lumière 1h avant coucher.' },
+        { nom:'Wadi Rum — Dune rouge (Jordanie)',        coords:[29.5756,35.4228],  desc:'Décor de Dune et The Martian.' },
+        { nom:'Borobudur — stupa à 5h (Java)',           coords:[-7.6079,110.2038], desc:'Lever de soleil depuis le stupa central.' },
+      ]},
+    ];
+
+    // ── INJECT PRO SECTIONS ──
+    function injectProSections() {
+      var dd = document.getElementById('main-dropdown');
+      if (!dd) return;
+      dd.querySelectorAll('.pro-hdr,.pro-wrap').forEach(function(el){ el.remove(); });
+
+      var locked = !_isPro;
+
+      function proGate() {
+        if (!_user)  { gbOpenAuth(); gbToast('Connecte-toi pour accéder au contenu Pro','#ff99cc'); return false; }
+        if (locked)  { window.location.href='globaya-premium.html'; return false; }
+        return true;
+      }
+
+      function goToSpot(coords, title, subtitle, desc) {
+        var m = window._map; if (!m) return;
+        m.setView(coords, 13);
+        var ic = window._actIcon;
+        L.marker(coords, ic ? {icon:ic} : {}).addTo(m)
+          .bindPopup('<strong>'+title+'</strong><br><span style="color:#ff99cc">'+subtitle+'</span><br><em style="color:#bbb;font-size:0.82rem">'+desc+'</em>')
+          .openPopup();
+        dd.style.display='none';
+        document.querySelector('.dropdown-button').setAttribute('aria-expanded','false');
+      }
+
+      // ── SPOTS SECRETS ──
+      var sh = document.createElement('div');
+      sh.className='section pro-hdr';
+      sh.innerHTML='📸 Spots Secrets Pro <span style="float:right">'+(locked?'🔒':'✦')+'</span>';
+      var sw = document.createElement('div');
+      sw.className='countries pro-wrap';
+
+      var byPays={};
+      PRO_SPOTS.forEach(function(s){ if(!byPays[s.pays]) byPays[s.pays]=[]; byPays[s.pays].push(s); });
+
+      Object.keys(byPays).forEach(function(pays){
+        var pEl=document.createElement('div');
+        pEl.className='country';
+        pEl.style.cssText='font-weight:700;color:#ff99cc;cursor:pointer;'+(locked?'opacity:0.45;':'');
+        pEl.textContent=pays;
+        var iWrap=document.createElement('div');
+        iWrap.className='items';
+        byPays[pays].forEach(function(spot){
+          var el=document.createElement('div');
+          el.className='item';
+          el.style.cssText=locked?'opacity:0.4;pointer-events:none;':'cursor:pointer;';
+          el.textContent=spot.nom;
+          if(!locked){ el.addEventListener('click',function(){ goToSpot(spot.coords,'✦ '+spot.nom,'Spot Secret Pro',spot.desc); }); }
+          iWrap.appendChild(el);
+        });
+        pEl.addEventListener('click',function(){
+          if(!proGate()) return;
+          document.querySelectorAll('.pro-wrap .items').forEach(function(x){ if(x!==iWrap) x.classList.remove('show'); });
+          iWrap.classList.toggle('show');
+        });
+        sw.appendChild(pEl);
+        sw.appendChild(iWrap);
+      });
+
+      sh.addEventListener('click',function(){ if(!proGate()) return; sw.classList.toggle('show'); });
+      dd.appendChild(sh); dd.appendChild(sw);
+
+      // ── CARTES THÉMATIQUES ──
+      var ch=document.createElement('div');
+      ch.className='section pro-hdr';
+      ch.innerHTML='🗺️ Cartes Thématiques Pro <span style="float:right">'+(locked?'🔒':'✦')+'</span>';
+      var cw=document.createElement('div');
+      cw.className='countries pro-wrap';
+
+      PRO_CARTES.forEach(function(carte){
+        var cEl=document.createElement('div');
+        cEl.className='country';
+        cEl.style.cssText='font-weight:700;cursor:pointer;'+(locked?'opacity:0.45;':'');
+        cEl.innerHTML=carte.nom+'<br><span style="font-size:0.72rem;color:#888;font-weight:400">'+carte.desc+'</span>';
+        var iWrap=document.createElement('div');
+        iWrap.className='items';
+        carte.spots.forEach(function(spot){
+          var el=document.createElement('div');
+          el.className='item';
+          el.style.cssText=locked?'opacity:0.4;pointer-events:none;':'cursor:pointer;';
+          el.textContent=spot.nom;
+          if(!locked){ el.addEventListener('click',function(){ goToSpot(spot.coords,spot.nom,carte.nom,spot.desc); }); }
+          iWrap.appendChild(el);
+        });
+        cEl.addEventListener('click',function(){
+          if(!proGate()) return;
+          document.querySelectorAll('.pro-wrap .items').forEach(function(x){ if(x!==iWrap) x.classList.remove('show'); });
+          iWrap.classList.toggle('show');
+        });
+        cw.appendChild(cEl); cw.appendChild(iWrap);
+      });
+
+      ch.addEventListener('click',function(){ if(!proGate()) return; cw.classList.toggle('show'); });
+      dd.appendChild(ch); dd.appendChild(cw);
+    }
+
+    // SESSION
+    sb.auth.onAuthStateChange(function(event, session) {
+      _user = session ? session.user : null;
+      if (_user) checkPro(_user.id);
+      else { _isPro = false; window._gbIsPro = false; updateBtn(); injectProSections(); }
+    });
+
+    sb.auth.getSession().then(function(r) {
+      _user = r.data.session ? r.data.session.user : null;
+      if (_user) checkPro(_user.id);
+      else updateBtn();
+    });
+
+    setTimeout(injectProSections, 700);
+  };
+  document.body.appendChild(s);
+})();
+
+</script>
+</body>
+</html>
